@@ -1,0 +1,25 @@
+# Map challenge keys to a docker-compose template or run options
+challenges:
+  web-easy:
+    image: xploitrum/web-easy:latest
+    internal_port: 5000
+    mem_limit: 512m
+    cpus: 0.5
+  web-medium:
+    image: xploitrum/web-medium:latest
+    internal_port: 5000
+    mem_limit: 512m
+    cpus: 0.5
+  web-hard:
+    image: xploitrum/web-hard:latest
+    internal_port: 5000
+    mem_limit: 512m
+    cpus: 0.5
+
+# Sandbox expiry in seconds
+expiry: 3600
+# Default network to attach (docker network must exist)
+docker_network: bridge
+# Denylist for images or commands (very simple)
+denylist:
+  - "privileged"

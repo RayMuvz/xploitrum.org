@@ -1,0 +1,106 @@
+version: '3.8'
+services:
+  traefik:
+    image: traefik:v2.12
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --api.insecure=false
+      - --log.level=INFO
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/traefik.yml:ro
+      - ./traefik/dynamic.yml:/dynamic.yml:ro
+      - traefik-letsencrypt:/letsencrypt
+    environment:
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      - LETSENCRYPT_ACME_SERVER=${LETSENCRYPT_ACME_SERVER}
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_DB: ctfd
+      POSTGRES_USER: ctfd
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: [ "redis-server", "--requirepass", "redispass" ]
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+    # Redis is optional for sessions/caching.
+
+  ctfd:
+    image: ctfd/ctfd:latest
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://ctfd:${POSTGRES_PASSWORD}@postgres:5432/ctfd
+      - REDIS_URL=redis://:redispass@redis:6379/0
+      - CTF_HOST=https://${CTFD_DOMAIN}
+      - WTF_CSRF_ENABLED=True
+    volumes:
+      - ./backend/ctfd-plugin-supervisor:/var/www/CTFd/CTFd/plugins/supervisor # plugin mounted
+      - ctfd_uploads:/var/www/CTFd/CTFd/uploads
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ctfd.rule=Host(`${CTFD_DOMAIN}`)"
+      - "traefik.http.routers.ctfd.entrypoints=websecure"
+      - "traefik.http.routers.ctfd.tls=true"
+      - "traefik.http.routers.ctfd.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.ctfd.tls.domains[0].main=${CTFD_DOMAIN}"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.front.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.front.entrypoints=websecure"
+      - "traefik.http.routers.front.tls=true"
+      - "traefik.http.routers.front.tls.certresolver=letsencrypt"
+    restart: unless-stopped
+
+  supervisor:
+    build:
+      context: ./supervisor
+      dockerfile: Dockerfile
+    environment:
+      - SUPERVISOR_SECRET=${SUPERVISOR_SECRET}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./challenges:/srv/challenges:ro
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=false" # supervisor doesn't need public exposure
+
+  openvpn:
+    image: kylemanna/openvpn
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - openvpn-data:/etc/openvpn
+    restart: unless-stopped
+    # Expose no public port here; we'll generate client configs in deploy/vpn
+    # If you want a web admin for openvpn, add a separate web container.
+
+volumes:
+  pgdata:
+  redisdata:
+  ctfd_uploads:
+  traefik-letsencrypt:
+  openvpn-data:
+  debuglogs:
