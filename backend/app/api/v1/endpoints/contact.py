@@ -88,10 +88,16 @@ async def send_contact_message(contact: ContactMessage):
                 }
             except Exception as email_error:
                 print(f"⚠️ Failed to send email: {email_error}")
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Failed to send message: {str(email_error)}"
-                )
+                # Don't fail the request, just log the message
+                print(f"📧 Contact message logged (email delivery failed):")
+                print(f"   From: {contact.name} <{contact.email}>")
+                print(f"   Message: {contact.message}")
+                
+                return {
+                    "message": "Message received. We'll get back to you soon!",
+                    "email_sent": False,
+                    "note": "Email delivery temporarily unavailable, but message was logged"
+                }
         else:
             # Development mode - log to console
             print("⚠️ Email not configured. Contact message logged:")
