@@ -48,10 +48,7 @@ export default function EventsPage() {
         full_name: '',
         email: '',
         phone: '',
-        university: '',
-        year_of_study: '',
-        dietary_restrictions: '',
-        special_requirements: ''
+        year_of_study: ''
     })
     const [isSubmitting, setIsSubmitting] = useState(false)
 
