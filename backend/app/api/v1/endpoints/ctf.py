@@ -38,14 +38,17 @@ class ChallengeResponse(BaseModel):
 
 class InstanceResponse(BaseModel):
     id: int
+    challenge_id: int
     challenge_title: str
     challenge_category: str
     status: str
-    started_at: str
-    expires_at: Optional[str]
+    started_at: Optional[str]
+    expires_at: Optional[str] = None
     container_name: str
     ports: Optional[dict] = None
     ip_address: Optional[str] = None
+    instance_url: Optional[str] = None
+    time_remaining: Optional[int] = None
     status_details: Optional[str] = None
 
 class FlagSubmission(BaseModel):
