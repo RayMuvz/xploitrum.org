@@ -17,7 +17,7 @@ export function Footer() {
                     <div>
                         <h4 className="text-white font-semibold mb-4">Platform</h4>
                         <ul className="space-y-2">
-                            <li><a href="/ctf" className="text-gray-400 hover:text-cyber-400 transition-colors">Challenges</a></li>
+                            <li><a href="/ctf-platform" className="text-gray-400 hover:text-cyber-400 transition-colors">Challenges</a></li>
                             <li><a href="/lab" className="text-gray-400 hover:text-cyber-400 transition-colors">Lab</a></li>
                             <li><a href="/leaderboard" className="text-gray-400 hover:text-cyber-400 transition-colors">Leaderboard</a></li>
                             <li><a href="/docs" className="text-gray-400 hover:text-cyber-400 transition-colors">Documentation</a></li>
