@@ -31,9 +31,6 @@ export function Navbar() {
                         <a href="/events" className="text-gray-300 hover:text-cyber-400 transition-colors">
                             Events
                         </a>
-                        <a href="/machines" className="text-gray-300 hover:text-cyber-400 transition-colors">
-                            Machines
-                        </a>
                         <a href="/contact" className="text-gray-300 hover:text-cyber-400 transition-colors">
                             Contact
                         </a>
@@ -126,12 +123,6 @@ export function Navbar() {
                             className="block px-3 py-2 text-gray-300 hover:text-cyber-400 transition-colors"
                         >
                             Events
-                        </a>
-                        <a
-                            href="/machines"
-                            className="block px-3 py-2 text-gray-300 hover:text-cyber-400 transition-colors"
-                        >
-                            Machines
                         </a>
                         <a
                             href="/contact"

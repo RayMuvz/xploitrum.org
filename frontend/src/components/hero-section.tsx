@@ -74,8 +74,8 @@ export function HeroSection() {
                             className="cyber-button group"
                             asChild
                         >
-                            <a href="/machines">
-                                Hack Machines
+                            <a href="/events">
+                                View Events
                                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                             </a>
                         </Button>
