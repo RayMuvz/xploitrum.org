@@ -34,8 +34,8 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: Optional[str] = None
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
-    ALLOWED_HOSTS: str = "localhost,127.0.0.1"
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,https://www.xploitrum.org,https://xploitrum.org,https://ctf.xploitrum.org"
+    ALLOWED_HOSTS: str = "localhost,127.0.0.1,www.xploitrum.org,xploitrum.org,ctf.xploitrum.org,api.xploitrum.org"
     
     # These will be converted to lists by validators
     

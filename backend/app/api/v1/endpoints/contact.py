@@ -52,15 +52,16 @@ async def send_contact_message(contact: ContactMessage):
         </html>
         """
         
-        # Configure email
+        # Configure email - try port 465 (SSL) if 587 (TLS) fails
+        use_ssl = settings.SMTP_PORT == 465
         conf = ConnectionConfig(
             MAIL_USERNAME=settings.SMTP_USERNAME or "noreply@xploitrum.org",
             MAIL_PASSWORD=settings.SMTP_PASSWORD or "",
             MAIL_FROM=settings.FROM_EMAIL,
             MAIL_PORT=settings.SMTP_PORT,
             MAIL_SERVER=settings.SMTP_HOST or "smtp.gmail.com",
-            MAIL_STARTTLS=settings.SMTP_TLS,
-            MAIL_SSL_TLS=False,
+            MAIL_STARTTLS=settings.SMTP_TLS and not use_ssl,
+            MAIL_SSL_TLS=use_ssl,
             USE_CREDENTIALS=bool(settings.SMTP_USERNAME and settings.SMTP_PASSWORD),
             VALIDATE_CERTS=True
         )
