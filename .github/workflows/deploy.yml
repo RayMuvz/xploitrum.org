@@ -15,12 +15,12 @@ jobs:
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.DROPLET_IP }}
-        username: xploitrum
+        username: root
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: 22
         script: |
           echo "🚀 Starting deployment..."
-          cd /home/xploitrum/xploitrum.org
+          cd /home/xploitrum.org
           
           # Pull latest changes
           echo "📥 Pulling from GitHub..."
