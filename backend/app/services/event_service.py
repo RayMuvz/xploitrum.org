@@ -20,15 +20,13 @@ class EventService:
         now = datetime.utcnow()
         events = db.query(Event).filter(
             Event.is_public == True,
-            Event.status.in_([EventStatus.UPCOMING, EventStatus.ACTIVE]),
             Event.start_date > now
         ).order_by(Event.start_date.asc()).limit(limit).all()
         
-        # Update status for each event
+        # Update status for each event (without committing)
         for event in events:
             event.update_status()
         
-        db.commit()
         return events
     
     def get_past_events(self, db: Session, limit: int = 10) -> List[Event]:
@@ -51,11 +49,10 @@ class EventService:
             Event.end_date >= now
         ).order_by(Event.start_date.asc()).all()
         
-        # Update status
+        # Update status (without committing)
         for event in events:
             event.update_status()
         
-        db.commit()
         return events
     
     def get_event_by_id(self, db: Session, event_id: int) -> Optional[Event]:
