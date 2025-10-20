@@ -31,7 +31,9 @@ async def get_current_user_optional(
         token_data = decode_access_token(credentials.credentials)
         user = db.query(User).filter(User.id == token_data.get("sub")).first()
         return user
-    except:
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Auth error in get_current_user_optional: {e}")
         return None
 
 router = APIRouter()
@@ -115,14 +117,10 @@ async def get_events(
     featured_only: Optional[bool] = Query(None, description="Show only featured events"),
     upcoming_only: Optional[bool] = Query(None, description="Show only upcoming events"),
     limit: int = Query(10, ge=1, le=100, description="Number of events to return"),
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    db: Session = Depends(get_db)
 ):
     """Get events with optional filters"""
     events = []
-    
-    # Check if user is admin
-    is_admin = current_user and current_user.role.value == "admin"
     
     if upcoming_only:
         events = event_service.get_upcoming_events(db, limit)
@@ -131,11 +129,8 @@ async def get_events(
     elif status == EventStatus.ACTIVE:
         events = event_service.get_active_events(db)
     else:
-        # Get events - all for admins, public only for others
-        if is_admin:
-            query = db.query(Event)  # Admins can see all events
-        else:
-            query = db.query(Event).filter(Event.is_public == True)  # Regular users see only public events
+        # Get all public events (for now, we'll make it admin-only later)
+        query = db.query(Event).filter(Event.is_public == True)
         
         if event_type:
             query = query.filter(Event.event_type == event_type)
