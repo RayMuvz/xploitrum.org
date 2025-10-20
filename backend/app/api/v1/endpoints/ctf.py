@@ -211,18 +211,28 @@ async def get_instance(
     db: Session = Depends(get_db)
 ):
     """Get a specific instance by ID"""
+    print(f"DEBUG: Fetching instance {instance_id}")
+    
     instance = db.query(Instance).filter(Instance.id == instance_id).first()
     
     if not instance:
+        print(f"DEBUG: Instance {instance_id} not found in database")
+        # List all instances for debugging
+        all_instances = db.query(Instance).all()
+        print(f"DEBUG: Available instances: {[i.id for i in all_instances]}")
+        
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Instance not found"
+            detail=f"Instance {instance_id} not found. It may have been deleted or failed to deploy. Check 'My Instances' tab for active instances."
         )
+    
+    print(f"DEBUG: Instance found: {instance.id}, status: {instance.status}")
     
     # Get challenge info
     challenge = db.query(Challenge).filter(Challenge.id == instance.challenge_id).first()
     
     if not challenge:
+        print(f"DEBUG: Challenge {instance.challenge_id} not found")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Challenge not found"
@@ -234,6 +244,8 @@ async def get_instance(
         time_remaining = max(0, int((instance.expires_at - datetime.utcnow()).total_seconds()))
     else:
         time_remaining = 0
+    
+    print(f"DEBUG: Returning instance data: URL={instance.instance_url}, IP={instance.container_ip}")
     
     # Return instance details
     return InstanceResponse(

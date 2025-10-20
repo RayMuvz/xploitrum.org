@@ -25,30 +25,41 @@ async def download_openvpn_config(
     For now, returns a sample config. In production, this would generate user-specific configs.
     """
     
-    # Sample OpenVPN configuration
-    ovpn_config = """# XploitRUM CTF Platform OpenVPN Configuration
-client
-dev tun
-proto udp
-remote vpn.xploitrum.org 1194
-resolv-retry infinite
-nobind
-persist-key
-persist-tun
-remote-cert-tls server
-cipher AES-256-CBC
-verb 3
-
-# NOTE: This is a sample configuration for development
-# In production, this would include:
-# - User-specific certificates
-# - CA certificate
-# - Client certificate
-# - Client key
-# Generated dynamically per user
-
-# For now, connect to your local network or use the target IPs directly
-# Example: ping 172.20.0.X (where X is the IP shown in your instance)
+    # OpenVPN configuration for CTF platform
+    # NOTE: For now, OpenVPN is not fully configured
+    # You can access instances directly via:
+    # http://xploitrum.org:PORT (shown in your instance details)
+    
+    ovpn_config = """# XploitRUM CTF Platform - Direct Access Configuration
+# 
+# ⚠️  OpenVPN Server Not Yet Configured
+#
+# TO ACCESS YOUR INSTANCES:
+# 1. Go to "My Instances" tab
+# 2. Click "Access Machine"
+# 3. Use the web browser interface (no VPN needed!)
+#
+# Each instance has a direct URL like:
+# http://xploitrum.org:10XXX
+#
+# You can also use the IP address shown in instance details:
+# http://172.20.0.X:80
+#
+# ═══════════════════════════════════════════════════════
+# OpenVPN Setup (For Administrators)
+# ═══════════════════════════════════════════════════════
+#
+# To set up OpenVPN server:
+# 1. Install OpenVPN: sudo apt install openvpn easy-rsa
+# 2. Configure PKI and generate certificates
+# 3. Update this endpoint to include:
+#    - CA certificate
+#    - Client certificate  
+#    - Client key
+#
+# For now, direct HTTP access works perfectly for web challenges!
+#
+# Questions? Check the DOCKER_SETUP.md documentation.
 """
 
     # Return configuration directly as response
