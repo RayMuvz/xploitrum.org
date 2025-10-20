@@ -85,6 +85,9 @@ export default function AdminChallengesPage() {
         hints: ''
     })
 
+    const [showQuickSetup, setShowQuickSetup] = useState(false)
+    const [quickSetupTemplate, setQuickSetupTemplate] = useState('')
+
     useEffect(() => {
         fetchChallenges()
         // Auto-refresh challenges every 30 seconds for real-time updates
@@ -332,6 +335,83 @@ export default function AdminChallengesPage() {
         })
     }
 
+    const quickSetupTemplates = {
+        'dvwa': {
+            title: 'DVWA - Damn Vulnerable Web Application',
+            description: `# DVWA - Damn Vulnerable Web Application
+
+Practice your web application security skills on this intentionally vulnerable PHP/MySQL web application.
+
+## 🎯 Learning Objectives
+- SQL Injection (Blind & Union-based)
+- Cross-Site Scripting (XSS)
+- Cross-Site Request Forgery (CSRF)
+- File Inclusion Vulnerabilities
+- Command Injection
+
+## 🔧 Setup Instructions
+1. Click "Start Machine" to deploy your DVWA instance
+2. Access the web interface via the provided URL
+3. Default credentials: admin / password
+4. Configure security level as needed
+5. Start practicing your penetration testing skills!
+
+**Happy Hacking! 🔓**`,
+            category: 'web',
+            difficulty: 'easy',
+            points: '100',
+            flag: 'flag{dvwa_sql_injection_master}',
+            author: 'XploitRUM Team',
+            docker_image: 'vulnerables/web-dvwa',
+            docker_ports: JSON.stringify([{"internal": "80", "protocol": "tcp"}]),
+            docker_environment: JSON.stringify({
+                "MYSQL_ROOT_PASSWORD": "password",
+                "MYSQL_DATABASE": "dvwa",
+                "MYSQL_USER": "dvwa",
+                "MYSQL_PASSWORD": "password"
+            }),
+            docker_volumes: JSON.stringify({
+                "/var/lib/mysql": {"type": "volume", "source": "dvwa_mysql_data"},
+                "/var/www/html": {"type": "volume", "source": "dvwa_web_data"}
+            }),
+            max_instances: '20',
+            instance_timeout: '7200',
+            max_solves: '',
+            tags: 'web,sql-injection,xss,csrf,file-inclusion,beginner',
+            hints: JSON.stringify([
+                {"text": "Check the SQL Injection module - try different payloads", "cost": 10},
+                {"text": "Look for UNION-based SQL injection opportunities", "cost": 20},
+                {"text": "The flag is stored in the database, not in files", "cost": 30}
+            ])
+        }
+    }
+
+    const loadQuickSetupTemplate = (template: string) => {
+        if (quickSetupTemplates[template]) {
+            const template_data = quickSetupTemplates[template]
+            setFormData({
+                title: template_data.title,
+                description: template_data.description,
+                category: template_data.category,
+                difficulty: template_data.difficulty,
+                points: template_data.points,
+                flag: template_data.flag,
+                author: template_data.author,
+                docker_image: template_data.docker_image,
+                docker_ports: template_data.docker_ports,
+                docker_environment: template_data.docker_environment,
+                docker_volumes: template_data.docker_volumes,
+                max_instances: template_data.max_instances,
+                instance_timeout: template_data.instance_timeout,
+                max_solves: template_data.max_solves,
+                tags: template_data.tags,
+                hints: template_data.hints
+            })
+            setShowQuickSetup(false)
+            setShowCreateForm(true)
+        }
+    }
+
     const startEdit = (challenge: Challenge) => {
         setEditingChallenge(challenge)
         setFormData({
@@ -411,6 +491,14 @@ export default function AdminChallengesPage() {
                         >
                             <Plus className="h-4 w-4 mr-2" />
                             Create Challenge
+                        </Button>
+                        <Button
+                            onClick={() => setShowQuickSetup(true)}
+                            variant="outline"
+                            className="ml-3 border-cyber-400 text-cyber-400 hover:bg-cyber-400 hover:text-black"
+                        >
+                            <Container className="h-4 w-4 mr-2" />
+                            Quick Setup
                         </Button>
                     </motion.div>
                 </div>
@@ -514,6 +602,58 @@ export default function AdminChallengesPage() {
             </div >
 
             {/* Create/Edit Challenge Modal */}
+            {/* Quick Setup Modal */}
+            {showQuickSetup && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="cyber-border p-6 rounded-lg bg-card max-w-2xl w-full"
+                    >
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-white">
+                                Quick Setup Templates
+                            </h2>
+                            <button
+                                onClick={() => setShowQuickSetup(false)}
+                                className="text-gray-400 hover:text-white transition-colors"
+                            >
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <p className="text-gray-400">
+                                Choose a pre-configured template to quickly set up popular CTF challenges.
+                            </p>
+                            
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="cyber-border p-4 rounded-lg bg-card/50">
+                                    <h3 className="text-lg font-semibold text-white mb-2">
+                                        DVWA - Damn Vulnerable Web Application
+                                    </h3>
+                                    <p className="text-gray-400 mb-4">
+                                        Practice web application security with SQL injection, XSS, CSRF, and more vulnerabilities.
+                                    </p>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-sm">Web</span>
+                                        <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-sm">Easy</span>
+                                        <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-sm">100 Points</span>
+                                    </div>
+                                    <Button
+                                        onClick={() => loadQuickSetupTemplate('dvwa')}
+                                        className="bg-gradient-to-r from-cyber-400 to-neon-green text-black"
+                                    >
+                                        <Container className="h-4 w-4 mr-2" />
+                                        Use DVWA Template
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+
             {
                 (showCreateForm || editingChallenge) && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">

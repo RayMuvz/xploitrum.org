@@ -61,12 +61,15 @@ class DockerService:
         ports: Optional[Dict[str, str]] = None,
         volumes: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
-        """Deploy a challenge container"""
+        """Deploy a challenge container with enhanced functionality"""
         if not self.is_available:
             raise DockerError("Docker is not available. Please ensure Docker is running.")
         try:
             # Generate unique container name
             container_name = f"challenge-{challenge_id}-{instance_id}-{user_id}"
+            
+            # Find available ports dynamically
+            host_ports = self._find_available_ports(ports or {"80/tcp": None})
             
             # Prepare container configuration
             container_config = {
@@ -76,17 +79,19 @@ class DockerService:
                 "detach": True,
                 "remove": False,
                 "environment": environment or {},
+                "ports": host_ports,
                 "labels": {
                     "challenge_id": str(challenge_id),
                     "instance_id": str(instance_id),
                     "user_id": str(user_id),
-                    "managed_by": "xploitrum"
-                }
+                    "managed_by": "xploitrum",
+                    "challenge_type": "ctf"
+                },
+                "restart_policy": {"Name": "unless-stopped"},
+                "mem_limit": "1g",  # Limit memory usage
+                "cpu_period": 100000,
+                "cpu_quota": 50000  # Limit CPU usage to 50%
             }
-            
-            # Add port mappings
-            if ports:
-                container_config["ports"] = ports
             
             # Add volume mappings
             if volumes:
@@ -94,6 +99,9 @@ class DockerService:
             
             # Create and start container
             container = self.client.containers.run(**container_config)
+            
+            # Wait for container to be ready
+            await self._wait_for_container_ready(container, timeout=60)
             
             # Get container information
             container.reload()
@@ -103,27 +111,92 @@ class DockerService:
             if container.attrs.get("NetworkSettings", {}).get("Networks", {}).get(self.network_name):
                 container_ip = container.attrs["NetworkSettings"]["Networks"][self.network_name]["IPAddress"]
             
-            # Generate access URL
-            instance_url = None
-            if container_ip and ports:
-                # Use first mapped port for access URL
-                first_port = list(ports.keys())[0]
-                instance_url = f"http://{container_ip}:{first_port}"
+            # Generate access URLs (both direct and VPN)
+            access_urls = self._generate_access_urls(container_ip, host_ports)
             
             logger.info(f"Deployed challenge container: {container.id}")
+            logger.info(f"Container IP: {container_ip}")
+            logger.info(f"Access URLs: {access_urls}")
             
             return {
                 "id": container.id,
                 "name": container.name,
                 "ip": container_ip,
-                "url": instance_url,
+                "url": access_urls.get("direct"),
+                "vpn_url": access_urls.get("vpn"),
                 "ports": container.attrs.get("NetworkSettings", {}).get("Ports", {}),
-                "status": container.status
+                "host_ports": host_ports,
+                "status": container.status,
+                "access_urls": access_urls
             }
             
         except Exception as e:
             logger.error(f"Failed to deploy challenge: {e}")
             raise DockerError(f"Failed to deploy challenge: {e}")
+    
+    def _find_available_ports(self, port_mapping: Dict[str, str]) -> Dict[str, str]:
+        """Find available host ports for container port mapping"""
+        import socket
+        
+        available_ports = {}
+        start_port = 10000  # Start from port 10000
+        
+        for container_port in port_mapping.keys():
+            for port in range(start_port, 65535):
+                try:
+                    # Check if port is available
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        s.bind(('', port))
+                        available_ports[container_port] = str(port)
+                        start_port = port + 1
+                        break
+                except OSError:
+                    continue
+        
+        return available_ports
+    
+    async def _wait_for_container_ready(self, container, timeout: int = 60):
+        """Wait for container to be ready and healthy"""
+        import time
+        
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            container.reload()
+            if container.status == "running":
+                # Check if container is healthy (basic check)
+                try:
+                    # For web applications, try to connect to port 80
+                    if "80/tcp" in [port.split("/")[0] + "/" + port.split("/")[1] for port in container.attrs.get("NetworkSettings", {}).get("Ports", {}).keys()]:
+                        # Simple health check - could be enhanced
+                        return True
+                except:
+                    pass
+                return True
+            time.sleep(2)
+        
+        raise DockerError(f"Container {container.id} failed to become ready within {timeout} seconds")
+    
+    def _generate_access_urls(self, container_ip: str, host_ports: Dict[str, str]) -> Dict[str, str]:
+        """Generate access URLs for both direct and VPN access"""
+        urls = {}
+        
+        # Direct access via host ports
+        if host_ports:
+            for container_port, host_port in host_ports.items():
+                port = container_port.split("/")[0]
+                urls["direct"] = f"http://{settings.OPENVPN_SERVER_NAME}.xploitrum.org:{host_port}"
+                break  # Use first port for main URL
+        
+        # VPN access via container IP
+        if container_ip:
+            # Find HTTP port in container
+            for container_port in host_ports.keys():
+                port = container_port.split("/")[0]
+                if port in ["80", "8080", "3000", "8000"]:  # Common web ports
+                    urls["vpn"] = f"http://{container_ip}:{port}"
+                    break
+        
+        return urls
     
     async def stop_container(self, container_id: str) -> bool:
         """Stop and remove a container"""
