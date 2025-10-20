@@ -66,9 +66,6 @@ class Machine(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     created_by = Column(Integer, nullable=True)
     
-    # Relationships
-    instances = relationship("MachineInstance", back_populates="machine", cascade="all, delete-orphan")
-    
     def __repr__(self):
         return f"<Machine(id={self.id}, name='{self.name}', difficulty='{self.difficulty}')>"
 
@@ -92,9 +89,6 @@ class MachineInstance(Base):
     started_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     stopped_at = Column(DateTime(timezone=True), nullable=True)
-    
-    # Relationships
-    machine = relationship("Machine", back_populates="instances")
     
     @property
     def time_remaining(self):

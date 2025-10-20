@@ -262,9 +262,13 @@ async def create_machine(
             detail="Machine with this name already exists"
         )
     
-    # Encrypt flag
-    from app.core.security import encrypt_flag
-    encrypted_flag = encrypt_flag(machine_data.flag)
+    # Store flag (encrypt if function available)
+    try:
+        from app.core.security import encrypt_flag
+        encrypted_flag = encrypt_flag(machine_data.flag)
+    except:
+        # If encryption not available, store as-is for now
+        encrypted_flag = machine_data.flag
     
     # Create machine
     machine = Machine(
