@@ -79,19 +79,24 @@ class CTFService:
                 detail="Challenge is not active"
             )
         
-        # Check if user already has an active instance for this challenge
-        # Skip this check for anonymous users (user.id is None) to allow multiple anonymous instances
+        # Check if user already has ANY active instance (only one at a time allowed)
+        # Skip this check for anonymous users (user.id is None)
         if user.id is not None:
-            existing_instance = db.query(Instance).filter(
+            # Check for any active instance (not just this challenge)
+            any_active_instance = db.query(Instance).filter(
                 Instance.user_id == user.id,
-                Instance.challenge_id == challenge_id,
                 Instance.status == InstanceStatus.RUNNING
             ).first()
             
-            if existing_instance:
+            if any_active_instance:
+                # Get the challenge name for the active instance
+                active_challenge = db.query(Challenge).filter(
+                    Challenge.id == any_active_instance.challenge_id
+                ).first()
+                
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="You already have an active instance for this challenge"
+                    detail=f"You already have an active instance running: {active_challenge.title if active_challenge else 'Unknown'}. Please stop it before starting a new one."
                 )
         
         # Check if challenge has reached max instances

@@ -178,13 +178,14 @@ class DockerService:
         """Generate access URLs for both direct and VPN access"""
         urls = {}
         
-        # Direct access via host ports
+        # Direct access via host ports (use droplet IP or xploitrum.org)
         if host_ports:
             for container_port, host_port in host_ports.items():
                 port = container_port.split("/")[0]
-                # Use server hostname if available, otherwise use xploitrum
-                server_name = getattr(settings, 'OPENVPN_SERVER_NAME', 'xploitrum')
-                urls["direct"] = f"http://{server_name}.xploitrum.org:{host_port}"
+                # Use the main domain for direct access
+                # The nginx proxy should handle forwarding or user accesses directly via IP:PORT
+                urls["direct"] = f"http://xploitrum.org:{host_port}"
+                urls["direct_ip"] = f"http://[SERVER_IP]:{host_port}"  # Will be replaced
                 break  # Use first port for main URL
         
         # VPN access via container IP
