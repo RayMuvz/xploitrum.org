@@ -1,0 +1,223 @@
+version: '3.8'
+
+services:
+  # Frontend - Next.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: xploitrum-frontend
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=https://api.xploitrum.org
+      - NEXT_PUBLIC_CTF_URL=https://ctf.xploitrum.org
+      - NEXT_PUBLIC_LAB_URL=https://lab.xploitrum.org
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - frontend
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`www.xploitrum.org`) || Host(`xploitrum.org`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+    restart: unless-stopped
+
+  # Backend - FastAPI
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: xploitrum-backend
+    environment:
+      - DATABASE_URL=postgresql://xploitrum:${DB_PASSWORD}@postgres:5432/xploitrum
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - OPENVPN_CONFIG_PATH=/etc/openvpn/server.conf
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backend:/app
+      - openvpn_data:/etc/openvpn
+      - challenge_volumes:/var/lib/challenges
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - backend
+      - docker
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`api.xploitrum.org`)"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+    restart: unless-stopped
+
+  # CTF Platform - Next.js (separate from main website)
+  ctf-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.ctf
+    container_name: xploitrum-ctf
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=https://api.xploitrum.org
+      - NEXT_PUBLIC_CTF_URL=https://ctf.xploitrum.org
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - frontend
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ctf.rule=Host(`ctf.xploitrum.org`)"
+      - "traefik.http.routers.ctf.entrypoints=websecure"
+      - "traefik.http.routers.ctf.tls.certresolver=letsencrypt"
+      - "traefik.http.services.ctf.loadbalancer.server.port=3001"
+    restart: unless-stopped
+
+  # Lab Interface - Next.js
+  lab-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.lab
+    container_name: xploitrum-lab
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=https://api.xploitrum.org
+      - NEXT_PUBLIC_LAB_URL=https://lab.xploitrum.org
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - frontend
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lab.rule=Host(`lab.xploitrum.org`)"
+      - "traefik.http.routers.lab.entrypoints=websecure"
+      - "traefik.http.routers.lab.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lab.loadbalancer.server.port=3002"
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: xploitrum-postgres
+    environment:
+      - POSTGRES_DB=xploitrum
+      - POSTGRES_USER=xploitrum
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: xploitrum-redis
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # OpenVPN Server
+  openvpn:
+    image: kylemanna/openvpn:latest
+    container_name: xploitrum-openvpn
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "1194:1194/udp"
+    volumes:
+      - openvpn_data:/etc/openvpn
+    networks:
+      - vpn
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vpn.rule=Host(`vpn.xploitrum.org`)"
+      - "traefik.http.routers.vpn.entrypoints=websecure"
+      - "traefik.http.routers.vpn.tls.certresolver=letsencrypt"
+      - "traefik.http.services.vpn.loadbalancer.server.port=8080"
+    restart: unless-stopped
+
+  # Traefik Reverse Proxy
+  traefik:
+    image: traefik:v2.10
+    container_name: xploitrum-traefik
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--log.level=INFO"
+      - "--accesslog=true"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_data:/letsencrypt
+    networks:
+      - frontend
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.xploitrum.org`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.service=api@internal"
+    restart: unless-stopped
+
+  # Portainer for container management
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: xploitrum-portainer
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.xploitrum.org`)"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  openvpn_data:
+  traefik_data:
+  portainer_data:
+  challenge_volumes:
+
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+  docker:
+    driver: bridge
+  vpn:
+    driver: bridge

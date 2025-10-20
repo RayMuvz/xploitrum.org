@@ -1,0 +1,70 @@
+# Environment variables
+.env
+.env.local
+.env.production
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+.next/
+out/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Uploads
+uploads/
+static/
+
+# Process IDs
+*.pid
+
+# Backups
+backups/
+
+# Build
+dist/
+.next/
+
+# Testing
+.pytest_cache/
+coverage/
+*.cover
+
+# Temporary files
+tmp/
+temp/

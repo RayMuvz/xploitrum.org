@@ -1,0 +1,268 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 222.2 84% 4.9%;
+        --foreground: 210 40% 98%;
+        --card: 222.2 84% 4.9%;
+        --card-foreground: 210 40% 98%;
+        --popover: 222.2 84% 4.9%;
+        --popover-foreground: 210 40% 98%;
+        --primary: 210 40% 98%;
+        --primary-foreground: 222.2 84% 4.9%;
+        --secondary: 217.2 32.6% 17.5%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 217.2 32.6% 17.5%;
+        --muted-foreground: 215 20.2% 65.1%;
+        --accent: 217.2 32.6% 17.5%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 217.2 32.6% 17.5%;
+        --input: 217.2 32.6% 17.5%;
+        --ring: 212.7 26.8% 83.9%;
+        --radius: 0.5rem;
+    }
+
+    .light {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: 222.2 47.4% 11.2%;
+        --primary-foreground: 210 40% 98%;
+        --secondary: 210 40% 96%;
+        --secondary-foreground: 222.2 47.4% 11.2%;
+        --muted: 210 40% 96%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96%;
+        --accent-foreground: 222.2 47.4% 11.2%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 222.2 84% 4.9%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+@layer components {
+    .cyber-bg {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        background-image:
+            radial-gradient(circle at 25% 25%, rgba(0, 245, 255, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 75% 75%, rgba(0, 255, 65, 0.1) 0%, transparent 50%);
+    }
+
+    .cyber-grid {
+        background-image:
+            linear-gradient(rgba(0, 245, 255, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 245, 255, 0.1) 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+
+    .neon-glow {
+        box-shadow:
+            0 0 5px #00f5ff,
+            0 0 10px #00f5ff,
+            0 0 15px #00f5ff,
+            0 0 20px #00f5ff;
+    }
+
+    .neon-glow-green {
+        box-shadow:
+            0 0 5px #00ff41,
+            0 0 10px #00ff41,
+            0 0 15px #00ff41,
+            0 0 20px #00ff41;
+    }
+
+    .cyber-border {
+        border: 1px solid rgba(0, 245, 255, 0.3);
+        background: rgba(0, 245, 255, 0.05);
+    }
+
+    .cyber-border:hover {
+        border-color: rgba(0, 245, 255, 0.6);
+        background: rgba(0, 245, 255, 0.1);
+    }
+
+    .matrix-text {
+        font-family: 'Courier New', monospace;
+        color: #00ff41;
+        text-shadow: 0 0 10px #00ff41;
+    }
+
+    .glitch-text {
+        position: relative;
+        color: #00f5ff;
+        text-shadow:
+            2px 0 #ff0080,
+            -2px 0 #00ff41,
+            0 2px #ff0080,
+            0 -2px #00ff41;
+    }
+
+    .cyber-button {
+        @apply relative overflow-hidden bg-transparent border border-cyber-500 text-cyber-500 px-6 py-2 rounded-lg transition-all duration-300;
+    }
+
+    .cyber-button:hover {
+        @apply bg-cyber-500 text-black shadow-lg;
+        box-shadow: 0 0 20px rgba(14, 165, 233, 0.5);
+    }
+
+    .cyber-button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
+    }
+
+    .cyber-button:hover::before {
+        left: 100%;
+    }
+
+    .challenge-card {
+        @apply bg-card border border-border rounded-lg p-6 transition-all duration-300 hover:shadow-lg hover:border-cyber-500;
+    }
+
+    .challenge-card:hover {
+        box-shadow: 0 0 20px rgba(14, 165, 233, 0.2);
+    }
+
+    .difficulty-easy {
+        @apply text-green-400 border-green-400 bg-green-400/10;
+    }
+
+    .difficulty-medium {
+        @apply text-yellow-400 border-yellow-400 bg-yellow-400/10;
+    }
+
+    .difficulty-hard {
+        @apply text-red-400 border-red-400 bg-red-400/10;
+    }
+
+    .difficulty-expert {
+        @apply text-purple-400 border-purple-400 bg-purple-400/10;
+    }
+
+    .category-web {
+        @apply text-blue-400;
+    }
+
+    .category-crypto {
+        @apply text-yellow-400;
+    }
+
+    .category-pwn {
+        @apply text-red-400;
+    }
+
+    .category-reverse {
+        @apply text-purple-400;
+    }
+
+    .category-forensics {
+        @apply text-green-400;
+    }
+
+    .category-osint {
+        @apply text-orange-400;
+    }
+
+    .category-misc {
+        @apply text-gray-400;
+    }
+
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+
+    .typing-animation {
+        overflow: hidden;
+        border-right: 2px solid #00f5ff;
+        white-space: nowrap;
+        animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+    }
+
+    @keyframes typing {
+        from {
+            width: 0;
+        }
+
+        to {
+            width: 100%;
+        }
+    }
+
+    @keyframes blink-caret {
+
+        from,
+        to {
+            border-color: transparent;
+        }
+
+        50% {
+            border-color: #00f5ff;
+        }
+    }
+
+    .floating {
+        animation: floating 3s ease-in-out infinite;
+    }
+
+    @keyframes floating {
+
+        0%,
+        100% {
+            transform: translateY(0px);
+        }
+
+        50% {
+            transform: translateY(-10px);
+        }
+    }
+
+    .pulse-ring {
+        animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+
+    @keyframes pulse-ring {
+        0% {
+            transform: scale(0.33);
+        }
+
+        40%,
+        50% {
+            opacity: 1;
+        }
+
+        100% {
+            opacity: 0;
+            transform: scale(1.2);
+        }
+    }
+}

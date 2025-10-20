@@ -1,0 +1,59 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  deploy:
+    name: Deploy to DigitalOcean
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 🚀 Deploy to Server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.DROPLET_IP }}
+        username: xploitrum
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 22
+        script: |
+          echo "🚀 Starting deployment..."
+          cd /home/xploitrum/xploitrum.org
+          
+          # Pull latest changes
+          echo "📥 Pulling from GitHub..."
+          git pull origin main
+          
+          # Update backend
+          echo "🔧 Updating backend..."
+          cd backend
+          source venv/bin/activate
+          pip install -r requirements.txt --quiet
+          
+          # Update frontend
+          echo "🎨 Updating frontend..."
+          cd ../frontend
+          npm install --silent
+          npm run build
+          
+          # Restart services
+          echo "🔄 Restarting services..."
+          sudo systemctl restart xploitrum-backend
+          sudo systemctl restart xploitrum-frontend
+          sudo systemctl reload nginx
+          
+          # Check status
+          echo "✅ Deployment complete!"
+          echo "Backend: $(sudo systemctl is-active xploitrum-backend)"
+          echo "Frontend: $(sudo systemctl is-active xploitrum-frontend)"
+          
+    - name: ✅ Deployment Status
+      if: success()
+      run: echo "🎉 Successfully deployed to production!"
+      
+    - name: ❌ Deployment Failed
+      if: failure()
+      run: echo "❌ Deployment failed. Check logs on server."
+

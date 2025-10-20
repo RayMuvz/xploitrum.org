@@ -1,0 +1,32 @@
+
+New Student Organization Registration Submitted
+
+Student Information:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Name: John  Doe
+Email: christian.rios17@upr.edu
+Phone: 123-213-1231
+Student Number: 231-23-1231
+
+Academic Information:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Year of Study: 4th
+Major: ICOM
+
+Cybersecurity Background:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Current Level: Pro
+
+Why They Want to Join:
+sadas
+
+What They're Looking Forward To:
+asdasd
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Submitted: October 20, 2025 at 03:23 AM
+
+A CSV file with this registration is attached.
