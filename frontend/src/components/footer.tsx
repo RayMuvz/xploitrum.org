@@ -10,14 +10,13 @@ export function Footer() {
                     <div>
                         <h3 className="text-xl font-bold text-cyber-400 mb-4">XploitRUM</h3>
                         <p className="text-gray-400 text-sm">
-                            Professional cybersecurity education and CTF platform for students and enthusiasts.
+                            Professional cybersecurity education and student organization at UPRM.
                         </p>
                     </div>
 
                     <div>
-                        <h4 className="text-white font-semibold mb-4">Platform</h4>
+                        <h4 className="text-white font-semibold mb-4">Resources</h4>
                         <ul className="space-y-2">
-                            <li><a href="/ctf-platform" className="text-gray-400 hover:text-cyber-400 transition-colors">Challenges</a></li>
                             <li><a href="/lab" className="text-gray-400 hover:text-cyber-400 transition-colors">Lab</a></li>
                             <li><a href="/leaderboard" className="text-gray-400 hover:text-cyber-400 transition-colors">Leaderboard</a></li>
                             <li><a href="/docs" className="text-gray-400 hover:text-cyber-400 transition-colors">Documentation</a></li>

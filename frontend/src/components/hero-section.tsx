@@ -59,8 +59,8 @@ export function HeroSection() {
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.8, delay: 0.4 }}
                     >
-                        UPRM's Prime Cybersecurity Student Organization and CTF Platform.
-                        Learn, practice, and compete in a secure, hands-on environment.
+                        UPRM's Prime Cybersecurity Student Organization.
+                        Learn, network, and grow your cybersecurity skills.
                     </motion.p>
 
                     <motion.div
@@ -74,8 +74,8 @@ export function HeroSection() {
                             className="cyber-button group"
                             asChild
                         >
-                            <a href="/ctf-platform">
-                                CTF Machines
+                            <a href="/events">
+                                View Events
                                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                             </a>
                         </Button>

@@ -161,24 +161,6 @@ export default function AdminDashboardPage() {
                             </Button>
                         </motion.div>
 
-                        {/* Challenges Management */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, delay: 0.3 }}
-                            className="cyber-border rounded-lg p-6 hover:border-cyber-400/50 cursor-pointer transition-all"
-                            onClick={() => router.push('/admin/challenges')}
-                        >
-                            <Trophy className="h-12 w-12 text-cyber-400 mb-4" />
-                            <h3 className="text-xl font-semibold text-white mb-2">Challenges</h3>
-                            <p className="text-gray-400 mb-4">
-                                Create and deploy CTF challenges
-                            </p>
-                            <Button className="w-full bg-cyber-400 text-black hover:bg-cyber-500">
-                                Manage Challenges
-                            </Button>
-                        </motion.div>
-
                         {/* Registration Settings */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
@@ -222,16 +204,11 @@ export default function AdminDashboardPage() {
                             <Activity className="mr-2 h-6 w-6 text-cyber-400" />
                             Platform Overview
                         </h3>
-                        <div className="grid md:grid-cols-4 gap-6">
+                        <div className="grid md:grid-cols-3 gap-6">
                             <div className="text-center">
                                 <Users className="h-8 w-8 text-cyber-400 mx-auto mb-2" />
                                 <p className="text-3xl font-bold text-white mb-1">{stats.total_members}</p>
                                 <p className="text-gray-400 text-sm">Total Users</p>
-                            </div>
-                            <div className="text-center">
-                                <Trophy className="h-8 w-8 text-cyber-400 mx-auto mb-2" />
-                                <p className="text-3xl font-bold text-white mb-1">{stats.total_challenges}</p>
-                                <p className="text-gray-400 text-sm">Active Challenges</p>
                             </div>
                             <div className="text-center">
                                 <Calendar className="h-8 w-8 text-cyber-400 mx-auto mb-2" />
@@ -240,8 +217,8 @@ export default function AdminDashboardPage() {
                             </div>
                             <div className="text-center">
                                 <TrendingUp className="h-8 w-8 text-cyber-400 mx-auto mb-2" />
-                                <p className="text-3xl font-bold text-white mb-1">{stats.total_flags}</p>
-                                <p className="text-gray-400 text-sm">Total Flags Captured</p>
+                                <p className="text-3xl font-bold text-white mb-1">{stats.total_members}</p>
+                                <p className="text-gray-400 text-sm">Active Members</p>
                             </div>
                         </div>
                         <p className="text-center text-gray-500 text-sm mt-6">
@@ -272,13 +249,6 @@ export default function AdminDashboardPage() {
                             >
                                 <Calendar className="h-5 w-5 text-cyber-400 mr-3" />
                                 <span className="text-white">View Events Page</span>
-                            </a>
-                            <a
-                                href="/ctf-platform"
-                                className="flex items-center p-4 bg-card hover:bg-cyber-400/10 border border-border hover:border-cyber-400/50 rounded-lg transition-all"
-                            >
-                                <Trophy className="h-5 w-5 text-cyber-400 mr-3" />
-                                <span className="text-white">View CTF Platform</span>
                             </a>
                             <a
                                 href="/"
