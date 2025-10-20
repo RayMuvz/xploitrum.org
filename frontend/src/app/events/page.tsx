@@ -65,14 +65,20 @@ export default function EventsPage() {
             const upcomingResponse = await fetch('/api/events?upcoming_only=true&limit=10')
             if (upcomingResponse.ok) {
                 const upcomingData = await upcomingResponse.json()
+                console.log('Upcoming events fetched:', upcomingData) // Debug log
                 setUpcomingEvents(upcomingData)
+            } else {
+                console.error('Failed to fetch upcoming events:', upcomingResponse.status)
             }
 
             // Fetch past events
             const pastResponse = await fetch('/api/events?status=completed&limit=10')
             if (pastResponse.ok) {
                 const pastData = await pastResponse.json()
+                console.log('Past events fetched:', pastData) // Debug log
                 setPastEvents(pastData)
+            } else {
+                console.error('Failed to fetch past events:', pastResponse.status)
             }
         } catch (error) {
             console.error('Failed to fetch events:', error)

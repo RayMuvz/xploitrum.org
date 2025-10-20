@@ -14,6 +14,26 @@ from app.services.auth_service import get_current_active_user, get_current_admin
 from app.models.user import User
 from app.models.event import Event, EventType, EventStatus
 
+# Optional auth dependency for public endpoints
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+security = HTTPBearer(auto_error=False)
+
+async def get_current_user_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    if not credentials:
+        return None
+    
+    try:
+        from app.services.auth_service import decode_access_token
+        token_data = decode_access_token(credentials.credentials)
+        user = db.query(User).filter(User.id == token_data.get("sub")).first()
+        return user
+    except:
+        return None
+
 router = APIRouter()
 
 # Pydantic models
@@ -95,10 +115,14 @@ async def get_events(
     featured_only: Optional[bool] = Query(None, description="Show only featured events"),
     upcoming_only: Optional[bool] = Query(None, description="Show only upcoming events"),
     limit: int = Query(10, ge=1, le=100, description="Number of events to return"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """Get events with optional filters"""
     events = []
+    
+    # Check if user is admin
+    is_admin = current_user and current_user.role.value == "admin"
     
     if upcoming_only:
         events = event_service.get_upcoming_events(db, limit)
@@ -107,8 +131,11 @@ async def get_events(
     elif status == EventStatus.ACTIVE:
         events = event_service.get_active_events(db)
     else:
-        # Get all public events
-        query = db.query(Event).filter(Event.is_public == True)
+        # Get events - all for admins, public only for others
+        if is_admin:
+            query = db.query(Event)  # Admins can see all events
+        else:
+            query = db.query(Event).filter(Event.is_public == True)  # Regular users see only public events
         
         if event_type:
             query = query.filter(Event.event_type == event_type)

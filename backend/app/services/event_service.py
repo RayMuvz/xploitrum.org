@@ -98,6 +98,7 @@ class EventService:
             registration_required=event_data.get("registration_required", False),
             registration_deadline=datetime.fromisoformat(event_data["registration_deadline"].replace('Z', '+00:00')) if event_data.get("registration_deadline") else None,
             is_featured=event_data.get("is_featured", False),
+            is_public=True,  # Explicitly set events as public by default
             agenda=event_data.get("agenda"),
             requirements=event_data.get("requirements"),
             resources=event_data.get("resources"),

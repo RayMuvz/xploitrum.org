@@ -94,7 +94,7 @@ export default function AdminEventsPage() {
 
     const fetchEvents = async () => {
         try {
-            const response = await fetch('/api/events', {
+            const response = await fetch('/api/events?limit=100', {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access_token : ''}`
                 }
@@ -102,7 +102,10 @@ export default function AdminEventsPage() {
 
             if (response.ok) {
                 const data = await response.json()
+                console.log('Admin events fetched:', data) // Debug log
                 setEvents(data)
+            } else {
+                console.error('Failed to fetch events:', response.status, response.statusText)
             }
         } catch (error) {
             console.error('Failed to fetch events:', error)
