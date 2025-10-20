@@ -363,26 +363,14 @@ Practice your web application security skills on this intentionally vulnerable P
             flag: 'flag{dvwa_sql_injection_master}',
             author: 'XploitRUM Team',
             docker_image: 'vulnerables/web-dvwa',
-            docker_ports: JSON.stringify([{ "internal": "80", "protocol": "tcp" }]),
-            docker_environment: JSON.stringify({
-                "MYSQL_ROOT_PASSWORD": "password",
-                "MYSQL_DATABASE": "dvwa",
-                "MYSQL_USER": "dvwa",
-                "MYSQL_PASSWORD": "password"
-            }),
-            docker_volumes: JSON.stringify({
-                "/var/lib/mysql": { "type": "volume", "source": "dvwa_mysql_data" },
-                "/var/www/html": { "type": "volume", "source": "dvwa_web_data" }
-            }),
+            docker_ports: '[{"internal": "80", "protocol": "tcp"}]',
+            docker_environment: '{"MYSQL_ROOT_PASSWORD": "password", "MYSQL_DATABASE": "dvwa", "MYSQL_USER": "dvwa", "MYSQL_PASSWORD": "password"}',
+            docker_volumes: '[]',
             max_instances: '20',
             instance_timeout: '7200',
             max_solves: '',
             tags: 'web,sql-injection,xss,csrf,file-inclusion,beginner',
-            hints: JSON.stringify([
-                { "text": "Check the SQL Injection module - try different payloads", "cost": 10 },
-                { "text": "Look for UNION-based SQL injection opportunities", "cost": 20 },
-                { "text": "The flag is stored in the database, not in files", "cost": 30 }
-            ])
+            hints: '[{"text": "Check the SQL Injection module - try different payloads", "cost": 10}, {"text": "Look for UNION-based SQL injection opportunities", "cost": 20}, {"text": "The flag is stored in the database, not in files", "cost": 30}]'
         }
     }
 
