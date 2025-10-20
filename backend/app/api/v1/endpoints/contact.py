@@ -52,14 +52,30 @@ async def send_contact_message(contact: ContactMessage):
         </html>
         """
         
-        # Configure email - try port 465 (SSL) if 587 (TLS) fails
+        # Configure email - try different ports for DigitalOcean compatibility
         use_ssl = settings.SMTP_PORT == 465
+        use_2525 = settings.SMTP_PORT == 2525
+        
+        # Use different server for port 2525 (SendGrid, Mailgun, etc.)
+        if use_2525:
+            smtp_server = "smtp.sendgrid.net"  # or smtp.mailgun.org
+        else:
+            smtp_server = settings.SMTP_HOST or "smtp.gmail.com"
+            
+        # Try multiple SMTP servers if one fails
+        smtp_servers = [
+            (smtp_server, settings.SMTP_PORT),
+            ("smtp.gmail.com", 2525),  # Try Gmail on port 2525
+            ("smtp.sendgrid.net", 587),  # Try SendGrid
+            ("smtp.mailgun.org", 587),   # Try Mailgun
+        ]
+            
         conf = ConnectionConfig(
             MAIL_USERNAME=settings.SMTP_USERNAME or "noreply@xploitrum.org",
             MAIL_PASSWORD=settings.SMTP_PASSWORD or "",
             MAIL_FROM=settings.FROM_EMAIL,
             MAIL_PORT=settings.SMTP_PORT,
-            MAIL_SERVER=settings.SMTP_HOST or "smtp.gmail.com",
+            MAIL_SERVER=smtp_server,
             MAIL_STARTTLS=settings.SMTP_TLS and not use_ssl,
             MAIL_SSL_TLS=use_ssl,
             USE_CREDENTIALS=bool(settings.SMTP_USERNAME and settings.SMTP_PASSWORD),
@@ -78,61 +94,65 @@ async def send_contact_message(contact: ContactMessage):
         email_configured = bool(settings.SMTP_USERNAME and settings.SMTP_PASSWORD)
         
         if email_configured:
-            try:
-                import asyncio
-                fm = FastMail(conf)
-                
-                # Add timeout to prevent hanging
-                await asyncio.wait_for(
-                    fm.send_message(admin_message),
-                    timeout=10.0  # 10 second timeout
-                )
-                print(f"✅ Contact email sent to admin@xploitrum.org from {contact.email}")
-                
-                return {
-                    "message": "Your message has been sent successfully. We'll get back to you soon!",
-                    "email_sent": True
-                }
-            except asyncio.TimeoutError:
-                print(f"⚠️ Email send timed out (SMTP port likely blocked)")
-                print(f"📧 Contact message logged (email delivery timed out):")
-                print(f"   From: {contact.name} <{contact.email}>")
-                print(f"   Message: {contact.message}")
-                
-                # Log to file for easy viewing
-                import datetime
-                with open("/home/xploitrum.org/backend/contact_messages.log", "a") as f:
-                    f.write(f"\n[{datetime.datetime.now()}] Contact Form Submission\n")
-                    f.write(f"Name: {contact.name}\n")
-                    f.write(f"Email: {contact.email}\n")
-                    f.write(f"Message: {contact.message}\n")
-                    f.write("-" * 50 + "\n")
-                
-                return {
-                    "message": "Message received. We'll get back to you soon!",
-                    "email_sent": False,
-                    "note": "Email delivery timed out (port may be blocked), but message was logged"
-                }
-            except Exception as email_error:
-                print(f"⚠️ Failed to send email: {email_error}")
-                print(f"📧 Contact message logged (email delivery failed):")
-                print(f"   From: {contact.name} <{contact.email}>")
-                print(f"   Message: {contact.message}")
-                
-                # Log to file for easy viewing
-                import datetime
-                with open("/home/xploitrum.org/backend/contact_messages.log", "a") as f:
-                    f.write(f"\n[{datetime.datetime.now()}] Contact Form Submission\n")
-                    f.write(f"Name: {contact.name}\n")
-                    f.write(f"Email: {contact.email}\n")
-                    f.write(f"Message: {contact.message}\n")
-                    f.write("-" * 50 + "\n")
-                
-                return {
-                    "message": "Message received. We'll get back to you soon!",
-                    "email_sent": False,
-                    "note": "Email delivery failed (port blocked), but message was logged"
-                }
+            import asyncio
+            
+            # Try multiple SMTP servers
+            for server, port in smtp_servers:
+                try:
+                    # Create config for this server
+                    test_conf = ConnectionConfig(
+                        MAIL_USERNAME=settings.SMTP_USERNAME,
+                        MAIL_PASSWORD=settings.SMTP_PASSWORD,
+                        MAIL_FROM=settings.FROM_EMAIL,
+                        MAIL_PORT=port,
+                        MAIL_SERVER=server,
+                        MAIL_STARTTLS=True,
+                        MAIL_SSL_TLS=False,
+                        USE_CREDENTIALS=True,
+                        VALIDATE_CERTS=True
+                    )
+                    
+                    fm = FastMail(test_conf)
+                    
+                    # Add timeout to prevent hanging
+                    await asyncio.wait_for(
+                        fm.send_message(admin_message),
+                        timeout=10.0  # 10 second timeout
+                    )
+                    print(f"✅ Contact email sent via {server}:{port} to admin@xploitrum.org from {contact.email}")
+                    
+                    return {
+                        "message": "Your message has been sent successfully. We'll get back to you soon!",
+                        "email_sent": True
+                    }
+                    
+                except asyncio.TimeoutError:
+                    print(f"⚠️ Timeout connecting to {server}:{port}")
+                    continue
+                except Exception as e:
+                    print(f"⚠️ Failed to connect to {server}:{port} - {e}")
+                    continue
+            
+            # If we get here, all SMTP servers failed
+            print(f"⚠️ All SMTP servers failed - logging message to file")
+            print(f"📧 Contact message logged (all email delivery failed):")
+            print(f"   From: {contact.name} <{contact.email}>")
+            print(f"   Message: {contact.message}")
+            
+            # Log to file for easy viewing
+            import datetime
+            with open("/home/xploitrum.org/backend/contact_messages.log", "a") as f:
+                f.write(f"\n[{datetime.datetime.now()}] Contact Form Submission\n")
+                f.write(f"Name: {contact.name}\n")
+                f.write(f"Email: {contact.email}\n")
+                f.write(f"Message: {contact.message}\n")
+                f.write("-" * 50 + "\n")
+            
+            return {
+                "message": "Message received. We'll get back to you soon!",
+                "email_sent": False,
+                "note": "Email delivery failed (all servers blocked), but message was logged"
+            }
         else:
             # Development mode - log to console
             print("⚠️ Email not configured. Contact message logged:")
