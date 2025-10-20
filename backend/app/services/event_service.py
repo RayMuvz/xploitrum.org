@@ -16,16 +16,12 @@ class EventService:
     """Event service for managing organization events"""
     
     def get_upcoming_events(self, db: Session, limit: int = 10) -> List[Event]:
-        """Get upcoming events"""
+        """Get upcoming events - simplified to avoid 500 errors"""
         now = datetime.utcnow()
         events = db.query(Event).filter(
             Event.is_public == True,
             Event.start_date > now
         ).order_by(Event.start_date.asc()).limit(limit).all()
-        
-        # Update status for each event (without committing)
-        for event in events:
-            event.update_status()
         
         return events
     
@@ -41,7 +37,7 @@ class EventService:
         return events
     
     def get_active_events(self, db: Session) -> List[Event]:
-        """Get currently active events"""
+        """Get currently active events - simplified to avoid 500 errors"""
         now = datetime.utcnow()
         events = db.query(Event).filter(
             Event.is_public == True,
@@ -49,9 +45,16 @@ class EventService:
             Event.end_date >= now
         ).order_by(Event.start_date.asc()).all()
         
-        # Update status (without committing)
-        for event in events:
-            event.update_status()
+        return events
+    
+    def get_all_active_events(self, db: Session) -> List[Event]:
+        """Get all events that are currently active (started but not finished)"""
+        now = datetime.utcnow()
+        events = db.query(Event).filter(
+            Event.is_public == True,
+            Event.start_date <= now,
+            Event.end_date >= now
+        ).order_by(Event.start_date.asc()).all()
         
         return events
     
