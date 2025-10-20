@@ -6,6 +6,8 @@ import docker
 import json
 import random
 import string
+import time
+import socket
 from typing import Dict, Any, Optional
 from loguru import logger
 from app.core.config import settings
@@ -136,8 +138,6 @@ class DockerService:
     
     def _find_available_ports(self, port_mapping: Dict[str, str]) -> Dict[str, str]:
         """Find available host ports for container port mapping"""
-        import socket
-        
         available_ports = {}
         start_port = 10000  # Start from port 10000
         
@@ -157,8 +157,6 @@ class DockerService:
     
     async def _wait_for_container_ready(self, container, timeout: int = 60):
         """Wait for container to be ready and healthy"""
-        import time
-        
         start_time = time.time()
         while time.time() - start_time < timeout:
             container.reload()
@@ -184,11 +182,13 @@ class DockerService:
         if host_ports:
             for container_port, host_port in host_ports.items():
                 port = container_port.split("/")[0]
-                urls["direct"] = f"http://{settings.OPENVPN_SERVER_NAME}.xploitrum.org:{host_port}"
+                # Use server hostname if available, otherwise use xploitrum
+                server_name = getattr(settings, 'OPENVPN_SERVER_NAME', 'xploitrum')
+                urls["direct"] = f"http://{server_name}.xploitrum.org:{host_port}"
                 break  # Use first port for main URL
         
         # VPN access via container IP
-        if container_ip:
+        if container_ip and host_ports:
             # Find HTTP port in container
             for container_port in host_ports.keys():
                 port = container_port.split("/")[0]

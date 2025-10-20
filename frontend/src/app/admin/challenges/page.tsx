@@ -335,7 +335,7 @@ export default function AdminChallengesPage() {
         })
     }
 
-    const quickSetupTemplates = {
+    const quickSetupTemplates: Record<string, any> = {
         'dvwa': {
             title: 'DVWA - Damn Vulnerable Web Application',
             description: `# DVWA - Damn Vulnerable Web Application
@@ -363,7 +363,7 @@ Practice your web application security skills on this intentionally vulnerable P
             flag: 'flag{dvwa_sql_injection_master}',
             author: 'XploitRUM Team',
             docker_image: 'vulnerables/web-dvwa',
-            docker_ports: JSON.stringify([{"internal": "80", "protocol": "tcp"}]),
+            docker_ports: JSON.stringify([{ "internal": "80", "protocol": "tcp" }]),
             docker_environment: JSON.stringify({
                 "MYSQL_ROOT_PASSWORD": "password",
                 "MYSQL_DATABASE": "dvwa",
@@ -371,17 +371,17 @@ Practice your web application security skills on this intentionally vulnerable P
                 "MYSQL_PASSWORD": "password"
             }),
             docker_volumes: JSON.stringify({
-                "/var/lib/mysql": {"type": "volume", "source": "dvwa_mysql_data"},
-                "/var/www/html": {"type": "volume", "source": "dvwa_web_data"}
+                "/var/lib/mysql": { "type": "volume", "source": "dvwa_mysql_data" },
+                "/var/www/html": { "type": "volume", "source": "dvwa_web_data" }
             }),
             max_instances: '20',
             instance_timeout: '7200',
             max_solves: '',
             tags: 'web,sql-injection,xss,csrf,file-inclusion,beginner',
             hints: JSON.stringify([
-                {"text": "Check the SQL Injection module - try different payloads", "cost": 10},
-                {"text": "Look for UNION-based SQL injection opportunities", "cost": 20},
-                {"text": "The flag is stored in the database, not in files", "cost": 30}
+                { "text": "Check the SQL Injection module - try different payloads", "cost": 10 },
+                { "text": "Look for UNION-based SQL injection opportunities", "cost": 20 },
+                { "text": "The flag is stored in the database, not in files", "cost": 30 }
             ])
         }
     }
@@ -621,12 +621,12 @@ Practice your web application security skills on this intentionally vulnerable P
                                 <X className="h-6 w-6" />
                             </button>
                         </div>
-                        
+
                         <div className="space-y-4">
                             <p className="text-gray-400">
                                 Choose a pre-configured template to quickly set up popular CTF challenges.
                             </p>
-                            
+
                             <div className="grid grid-cols-1 gap-4">
                                 <div className="cyber-border p-4 rounded-lg bg-card/50">
                                     <h3 className="text-lg font-semibold text-white mb-2">
