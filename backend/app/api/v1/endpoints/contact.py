@@ -74,30 +74,64 @@ async def send_contact_message(contact: ContactMessage):
             subtype="html"
         )
         
-        # Try to send email
+        # Try to send email with timeout
         email_configured = bool(settings.SMTP_USERNAME and settings.SMTP_PASSWORD)
         
         if email_configured:
             try:
+                import asyncio
                 fm = FastMail(conf)
-                await fm.send_message(admin_message)
+                
+                # Add timeout to prevent hanging
+                await asyncio.wait_for(
+                    fm.send_message(admin_message),
+                    timeout=10.0  # 10 second timeout
+                )
                 print(f"✅ Contact email sent to admin@xploitrum.org from {contact.email}")
                 
                 return {
                     "message": "Your message has been sent successfully. We'll get back to you soon!",
                     "email_sent": True
                 }
-            except Exception as email_error:
-                print(f"⚠️ Failed to send email: {email_error}")
-                # Don't fail the request, just log the message
-                print(f"📧 Contact message logged (email delivery failed):")
+            except asyncio.TimeoutError:
+                print(f"⚠️ Email send timed out (SMTP port likely blocked)")
+                print(f"📧 Contact message logged (email delivery timed out):")
                 print(f"   From: {contact.name} <{contact.email}>")
                 print(f"   Message: {contact.message}")
+                
+                # Log to file for easy viewing
+                import datetime
+                with open("/home/xploitrum.org/backend/contact_messages.log", "a") as f:
+                    f.write(f"\n[{datetime.datetime.now()}] Contact Form Submission\n")
+                    f.write(f"Name: {contact.name}\n")
+                    f.write(f"Email: {contact.email}\n")
+                    f.write(f"Message: {contact.message}\n")
+                    f.write("-" * 50 + "\n")
                 
                 return {
                     "message": "Message received. We'll get back to you soon!",
                     "email_sent": False,
-                    "note": "Email delivery temporarily unavailable, but message was logged"
+                    "note": "Email delivery timed out (port may be blocked), but message was logged"
+                }
+            except Exception as email_error:
+                print(f"⚠️ Failed to send email: {email_error}")
+                print(f"📧 Contact message logged (email delivery failed):")
+                print(f"   From: {contact.name} <{contact.email}>")
+                print(f"   Message: {contact.message}")
+                
+                # Log to file for easy viewing
+                import datetime
+                with open("/home/xploitrum.org/backend/contact_messages.log", "a") as f:
+                    f.write(f"\n[{datetime.datetime.now()}] Contact Form Submission\n")
+                    f.write(f"Name: {contact.name}\n")
+                    f.write(f"Email: {contact.email}\n")
+                    f.write(f"Message: {contact.message}\n")
+                    f.write("-" * 50 + "\n")
+                
+                return {
+                    "message": "Message received. We'll get back to you soon!",
+                    "email_sent": False,
+                    "note": "Email delivery failed (port blocked), but message was logged"
                 }
         else:
             # Development mode - log to console
