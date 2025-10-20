@@ -161,6 +161,24 @@ export default function AdminDashboardPage() {
                             </Button>
                         </motion.div>
 
+                        {/* Machines Management */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.3 }}
+                            className="cyber-border rounded-lg p-6 hover:border-cyber-400/50 cursor-pointer transition-all"
+                            onClick={() => router.push('/admin/machines')}
+                        >
+                            <Trophy className="h-12 w-12 text-cyber-400 mb-4" />
+                            <h3 className="text-xl font-semibold text-white mb-2">Machines</h3>
+                            <p className="text-gray-400 mb-4">
+                                Manage HTB-style vulnerable machines
+                            </p>
+                            <Button className="w-full bg-cyber-400 text-black hover:bg-cyber-500">
+                                Manage Machines
+                            </Button>
+                        </motion.div>
+
                         {/* Registration Settings */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
