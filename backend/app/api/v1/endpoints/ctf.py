@@ -201,6 +201,86 @@ async def get_user_instances(
     """Get user's challenge instances"""
     return ctf_service.get_user_instances(db, current_user)
 
+@router.get("/instances/{instance_id}", response_model=InstanceResponse)
+async def get_instance(
+    instance_id: int,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Get a specific instance by ID"""
+    instance = db.query(Instance).filter(Instance.id == instance_id).first()
+    
+    if not instance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Instance not found"
+        )
+    
+    # Get challenge info
+    challenge = db.query(Challenge).filter(Challenge.id == instance.challenge_id).first()
+    
+    if not challenge:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Challenge not found"
+        )
+    
+    # Calculate time remaining
+    from datetime import datetime
+    if instance.expires_at:
+        time_remaining = max(0, int((instance.expires_at - datetime.utcnow()).total_seconds()))
+    else:
+        time_remaining = 0
+    
+    # Return instance details
+    return InstanceResponse(
+        id=instance.id,
+        challenge_id=instance.challenge_id,
+        challenge_title=challenge.title,
+        challenge_category=challenge.category.value,
+        status=instance.status.value,
+        started_at=instance.started_at.isoformat() if instance.started_at else None,
+        expires_at=instance.expires_at.isoformat() if instance.expires_at else None,
+        container_name=instance.container_name or f"challenge-{challenge.id}-{instance.id}",
+        ports=instance.container_ports,
+        ip_address=instance.container_ip,
+        instance_url=instance.instance_url,
+        time_remaining=time_remaining
+    )
+
+@router.post("/instances/{instance_id}/stop")
+async def stop_instance_by_id(
+    instance_id: int,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Stop a specific instance by ID"""
+    instance = db.query(Instance).filter(Instance.id == instance_id).first()
+    
+    if not instance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Instance not found"
+        )
+    
+    # Stop the instance
+    if current_user:
+        return ctf_service.stop_challenge_instance(db, current_user, instance_id)
+    else:
+        # For anonymous users, just stop the container
+        from app.services.docker_service import DockerService
+        docker_service = DockerService()
+        if instance.container_id and docker_service.is_available:
+            await docker_service.stop_container(instance.container_id)
+        
+        # Update instance status
+        instance.status = InstanceStatus.STOPPED
+        from datetime import datetime
+        instance.stopped_at = datetime.utcnow()
+        db.commit()
+        
+        return {"message": "Instance stopped successfully"}
+
 @router.delete("/instances/{instance_id}")
 async def stop_instance(
     instance_id: int,

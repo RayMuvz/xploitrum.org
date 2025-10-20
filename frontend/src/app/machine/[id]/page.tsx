@@ -1,91 +1,191 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { useRouter } from 'next/navigation'
 import {
-    Terminal as TerminalIcon,
     Monitor,
+    Terminal as TerminalIcon,
+    X,
     Maximize2,
     Minimize2,
-    Power,
-    Wifi,
-    Clock,
-    Copy,
+    RefreshCw,
     ExternalLink,
-    Flag
+    Copy,
+    Check,
+    Flag,
+    Square,
+    Clock
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 
 interface Instance {
     id: number
+    challenge_id: number
     challenge_title: string
     challenge_category: string
     status: string
     started_at: string
     expires_at?: string
     container_name: string
-    ports?: Record<string, string>
+    ports?: Record<string, any>
     ip_address?: string
+    instance_url?: string
+    time_remaining?: number
 }
 
-export default function MachinePage({ params }: { params: { id: string } }) {
-    const instanceId = parseInt(params.id)
+export default function MachinePage() {
+    const params = useParams()
     const router = useRouter()
     const { toast } = useToast()
-    
+    const instanceId = params.id as string
+
     const [instance, setInstance] = useState<Instance | null>(null)
-    const [isFullscreen, setIsFullscreen] = useState(false)
-    const [terminalTab, setTerminalTab] = useState<'terminal' | 'browser'>('browser')
+    const [isLoading, setIsLoading] = useState(true)
+    const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(false)
+    const [isTerminalFullscreen, setIsTerminalFullscreen] = useState(false)
+    const [copied, setCopied] = useState(false)
+    const [browserUrl, setBrowserUrl] = useState('')
+    const [terminalUrl, setTerminalUrl] = useState('')
+    const iframeRef = useRef<HTMLIFrameElement>(null)
+    const terminalRef = useRef<HTMLIFrameElement>(null)
 
     useEffect(() => {
-        loadInstance()
+        fetchInstance()
+        const interval = setInterval(fetchInstance, 10000) // Refresh every 10 seconds
+        return () => clearInterval(interval)
     }, [instanceId])
 
-    const loadInstance = () => {
-        // Load from localStorage for anonymous users
-        const storedInstances = localStorage.getItem('anonymous_instances')
-        if (storedInstances) {
-            const instances = JSON.parse(storedInstances)
-            const found = instances.find((inst: Instance) => inst.id === instanceId)
-            if (found) {
-                setInstance(found)
+    const fetchInstance = async () => {
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+            const response = await fetch(`${apiUrl}/api/v1/ctf/instances/${instanceId}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access_token : ''}`
+                }
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                setInstance(data)
+                
+                // Set browser URL
+                if (data.instance_url) {
+                    setBrowserUrl(data.instance_url)
+                } else if (data.ip_address && data.ports) {
+                    // Construct URL from IP and ports
+                    const httpPort = Object.values(data.ports).find((port: any) => 
+                        port && (port.includes('80') || port.includes('8080'))
+                    )
+                    if (httpPort) {
+                        setBrowserUrl(`http://${data.ip_address}`)
+                    }
+                }
+
+                // Set terminal URL (WebSocket-based terminal)
+                // For now, we'll use xterm.js with WebSocket connection
+                setTerminalUrl(`${apiUrl}/api/v1/ctf/instances/${instanceId}/terminal`)
+            } else {
+                toast({
+                    title: "Error",
+                    description: "Failed to fetch instance details",
+                    variant: "destructive"
+                })
             }
+        } catch (error) {
+            console.error('Failed to fetch instance:', error)
+        } finally {
+            setIsLoading(false)
         }
     }
 
-    const formatTimeRemaining = (expiresAt: string) => {
-        const now = new Date()
-        const expiry = new Date(expiresAt)
-        const diff = expiry.getTime() - now.getTime()
+    const handleStopInstance = async () => {
+        if (!confirm('Are you sure you want to stop this instance?')) return
 
-        if (diff <= 0) return 'Expired'
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+            const response = await fetch(`${apiUrl}/api/v1/ctf/instances/${instanceId}/stop`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access_token : ''}`
+                }
+            })
 
-        const hours = Math.floor(diff / (1000 * 60 * 60))
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+            if (response.ok) {
+                toast({
+                    title: "Instance Stopped",
+                    description: "Your instance has been stopped successfully"
+                })
+                router.push('/ctf-platform')
+            } else {
+                toast({
+                    title: "Error",
+                    description: "Failed to stop instance",
+                    variant: "destructive"
+                })
+            }
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Network error occurred",
+                variant: "destructive"
+            })
+        }
+    }
 
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+        toast({
+            title: "Copied!",
+            description: "URL copied to clipboard"
+        })
+    }
+
+    const refreshBrowser = () => {
+        if (iframeRef.current) {
+            iframeRef.current.src = iframeRef.current.src
+        }
+    }
+
+    const openInNewTab = () => {
+        if (browserUrl) {
+            window.open(browserUrl, '_blank')
+        }
+    }
+
+    const openFullInstance = () => {
+        // Redirect to ctf.xploitrum.org subdomain for full instance view
+        const ctfUrl = `https://ctf.xploitrum.org/machine/${instanceId}`
+        window.open(ctfUrl, '_blank')
+    }
+
+    const formatTimeRemaining = (seconds?: number) => {
+        if (!seconds) return 'Unknown'
+        const hours = Math.floor(seconds / 3600)
+        const minutes = Math.floor((seconds % 3600) / 60)
         return `${hours}h ${minutes}m`
     }
 
-    const copyToClipboard = (text: string, label: string) => {
-        navigator.clipboard.writeText(text)
-        toast({
-            title: "Copied!",
-            description: `${label} copied to clipboard`,
-        })
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyber-400 mx-auto mb-4"></div>
+                    <p className="text-gray-400">Loading instance...</p>
+                </div>
+            </div>
+        )
     }
 
     if (!instance) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
+            <div className="min-h-screen bg-background flex items-center justify-center">
                 <div className="text-center">
-                    <Monitor className="h-16 w-16 mx-auto text-gray-600 mb-4" />
-                    <p className="text-gray-400">Instance not found</p>
-                    <Button
-                        onClick={() => router.push('/ctf-platform')}
-                        className="mt-4 bg-gradient-to-r from-cyber-400 to-neon-green text-black"
-                    >
+                    <p className="text-gray-400 mb-4">Instance not found</p>
+                    <Button onClick={() => router.push('/ctf-platform')}>
                         Back to CTF Platform
                     </Button>
                 </div>
@@ -94,214 +194,236 @@ export default function MachinePage({ params }: { params: { id: string } }) {
     }
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background text-white">
             {/* Header */}
-            <div className="bg-gradient-to-r from-cyber-900 via-background to-cyber-900 border-b border-cyber-400/20 px-4 py-3">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Button
-                            onClick={() => router.push('/ctf-platform')}
-                            variant="outline"
-                            size="sm"
-                            className="border-cyber-400 text-cyber-400"
-                        >
-                            ← Back
-                        </Button>
-                        <div>
-                            <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                                <Monitor className="h-5 w-5 text-cyber-400" />
-                                {instance.challenge_title}
-                            </h1>
-                            <p className="text-sm text-gray-400">{instance.challenge_category}</p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        {instance.expires_at && (
-                            <div className="flex items-center gap-2 text-sm text-gray-400 bg-gray-800/50 px-3 py-1 rounded">
-                                <Clock className="h-4 w-4 text-cyber-400" />
-                                <span className="font-semibold">{formatTimeRemaining(instance.expires_at)}</span>
+            <div className="border-b border-gray-800 bg-card/50 backdrop-blur-sm sticky top-0 z-40">
+                <div className="max-w-full mx-auto px-4 py-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <Button
+                                onClick={() => router.push('/ctf-platform')}
+                                variant="outline"
+                                className="border-gray-600"
+                            >
+                                <X className="h-4 w-4 mr-2" />
+                                Close
+                            </Button>
+                            <div>
+                                <h1 className="text-lg font-bold">{instance.challenge_title}</h1>
+                                <p className="text-sm text-gray-400">
+                                    {instance.challenge_category} • {instance.status}
+                                </p>
                             </div>
-                        )}
-                        <div className="flex items-center gap-2 text-sm">
-                            <Wifi className="h-4 w-4 text-green-400" />
-                            <span className="text-green-400 font-semibold">Connected</span>
                         </div>
-                    </div>
-                </div>
-            </div>
 
-            {/* Connection Info Bar */}
-            <div className="bg-gray-900 border-b border-gray-800 px-4 py-2">
-                <div className="max-w-7xl mx-auto flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-6">
-                        {instance.ip_address && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-gray-500">Target IP:</span>
-                                <code className="text-cyber-400 font-mono bg-gray-800 px-2 py-1 rounded">
-                                    {instance.ip_address}
-                                </code>
-                                <button
-                                    onClick={() => copyToClipboard(instance.ip_address!, 'IP Address')}
-                                    className="text-gray-400 hover:text-cyber-400"
-                                >
-                                    <Copy className="h-4 w-4" />
-                                </button>
-                            </div>
-                        )}
-                        {instance.ports && Object.keys(instance.ports).length > 0 && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-gray-500">Ports:</span>
-                                <div className="flex gap-2">
-                                    {Object.entries(instance.ports).map(([internal, external]) => (
-                                        <span key={internal} className="text-cyber-400 font-mono bg-gray-800 px-2 py-1 rounded">
-                                            {internal}
-                                        </span>
-                                    ))}
+                        <div className="flex items-center gap-3">
+                            {instance.time_remaining && (
+                                <div className="flex items-center gap-2 px-3 py-1 bg-cyber-400/20 rounded text-cyber-400">
+                                    <Clock className="h-4 w-4" />
+                                    <span className="text-sm font-mono">
+                                        {formatTimeRemaining(instance.time_remaining)}
+                                    </span>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                            {typeof window !== 'undefined' && !window.location.hostname.includes('ctf.xploitrum.org') && (
+                                <Button
+                                    onClick={openFullInstance}
+                                    variant="outline"
+                                    className="border-purple-400 text-purple-400"
+                                >
+                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                    Open in CTF View
+                                </Button>
+                            )}
+                            <Button
+                                onClick={() => router.push('/ctf-platform')}
+                                variant="outline"
+                                className="border-cyber-400 text-cyber-400"
+                            >
+                                <Flag className="h-4 w-4 mr-2" />
+                                Submit Flag
+                            </Button>
+                            <Button
+                                onClick={handleStopInstance}
+                                variant="outline"
+                                className="border-red-400 text-red-400 hover:bg-red-400 hover:text-black"
+                            >
+                                <Square className="h-4 w-4 mr-2" />
+                                Stop Instance
+                            </Button>
+                        </div>
                     </div>
-
-                    <Button
-                        onClick={() => router.push('/ctf-platform?tab=instances')}
-                        size="sm"
-                        variant="outline"
-                        className="border-red-400 text-red-400 hover:bg-red-400 hover:text-black"
-                    >
-                        <Power className="h-4 w-4 mr-2" />
-                        Stop Instance
-                    </Button>
                 </div>
             </div>
 
             {/* Main Content */}
-            <div className={`${isFullscreen ? 'fixed inset-0 z-50 pt-0' : 'max-w-7xl mx-auto px-4 py-4'}`}>
-                <div className="bg-gray-900 rounded-lg overflow-hidden border border-gray-800" style={{ height: isFullscreen ? '100vh' : 'calc(100vh - 200px)' }}>
-                    {/* Tabs */}
-                    <div className="flex items-center justify-between bg-gray-800 border-b border-gray-700 px-4">
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setTerminalTab('browser')}
-                                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                                    terminalTab === 'browser'
-                                        ? 'text-cyber-400 border-b-2 border-cyber-400'
-                                        : 'text-gray-400 hover:text-gray-300'
-                                }`}
-                            >
-                                <Monitor className="h-4 w-4 inline mr-2" />
-                                Web Browser
-                            </button>
-                            <button
-                                onClick={() => setTerminalTab('terminal')}
-                                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                                    terminalTab === 'terminal'
-                                        ? 'text-cyber-400 border-b-2 border-cyber-400'
-                                        : 'text-gray-400 hover:text-gray-300'
-                                }`}
-                            >
-                                <TerminalIcon className="h-4 w-4 inline mr-2" />
-                                Terminal
-                            </button>
+            <div className="p-4 space-y-4">
+                {/* Browser Section */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`cyber-border rounded-lg bg-card overflow-hidden ${
+                        isBrowserFullscreen ? 'fixed inset-4 z-50' : ''
+                    }`}
+                >
+                    {/* Browser Header */}
+                    <div className="bg-card/50 border-b border-gray-800 p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                            <Monitor className="h-5 w-5 text-cyber-400" />
+                            <div className="flex-1 bg-background rounded px-3 py-2 text-sm font-mono text-gray-400 flex items-center gap-2">
+                                <span className="flex-1 truncate">{browserUrl || 'No URL available'}</span>
+                                {browserUrl && (
+                                    <button
+                                        onClick={() => copyToClipboard(browserUrl)}
+                                        className="text-cyber-400 hover:text-cyber-300"
+                                    >
+                                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                    </button>
+                                )}
+                            </div>
                         </div>
-
-                        <button
-                            onClick={() => setIsFullscreen(!isFullscreen)}
-                            className="text-gray-400 hover:text-white p-2"
-                        >
-                            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                onClick={refreshBrowser}
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-400 hover:text-white"
+                            >
+                                <RefreshCw className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                onClick={openInNewTab}
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-400 hover:text-white"
+                            >
+                                <ExternalLink className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                onClick={() => setIsBrowserFullscreen(!isBrowserFullscreen)}
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-400 hover:text-white"
+                            >
+                                {isBrowserFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                            </Button>
+                        </div>
                     </div>
 
-                    {/* Content Area */}
-                    <div className="h-full bg-black">
-                        {terminalTab === 'browser' ? (
-                            <div className="h-full flex flex-col">
-                                {/* Browser Address Bar */}
-                                <div className="bg-gray-800 px-4 py-2 flex items-center gap-2 border-b border-gray-700">
-                                    <div className="flex-1 bg-gray-900 rounded px-3 py-1 flex items-center">
-                                        <span className="text-gray-500 text-sm font-mono">
-                                            http://{instance.ip_address}:80
-                                        </span>
-                                    </div>
-                                    <Button
-                                        onClick={() => window.open(`http://${instance.ip_address}`, '_blank')}
-                                        size="sm"
-                                        variant="outline"
-                                        className="border-cyber-400 text-cyber-400"
-                                    >
-                                        <ExternalLink className="h-4 w-4" />
-                                    </Button>
-                                </div>
-
-                                {/* Browser View */}
-                                <div className="flex-1 flex items-center justify-center bg-gray-950">
-                                    <div className="text-center">
-                                        <Monitor className="h-24 w-24 mx-auto text-gray-700 mb-6" />
-                                        <h3 className="text-xl text-white mb-2">Web View (Development Mode)</h3>
-                                        <p className="text-gray-400 mb-4 max-w-md">
-                                            In simulation mode, the web interface is not available.<br/>
-                                            Click "Open in New Tab" to access the target when Docker is running.
-                                        </p>
-                                        <div className="space-y-2">
-                                            <p className="text-sm text-gray-500">
-                                                <strong>Target IP:</strong> <code className="text-cyber-400">{instance.ip_address}</code>
-                                            </p>
-                                            <Button
-                                                onClick={() => window.open(`http://${instance.ip_address}`, '_blank')}
-                                                className="bg-gradient-to-r from-cyber-400 to-neon-green text-black"
-                                            >
-                                                <ExternalLink className="h-4 w-4 mr-2" />
-                                                Open in New Tab
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    {/* Browser Content */}
+                    <div className={isBrowserFullscreen ? 'h-[calc(100vh-180px)]' : 'h-[500px]'}>
+                        {browserUrl ? (
+                            <iframe
+                                ref={iframeRef}
+                                src={browserUrl}
+                                className="w-full h-full bg-white"
+                                title="Challenge Browser"
+                                sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                            />
                         ) : (
-                            <div className="h-full flex flex-col">
-                                {/* Terminal View */}
-                                <div className="flex-1 p-4 font-mono text-sm overflow-auto">
-                                    <div className="text-green-400">
-                                        <p>XploitRUM CTF Platform - Web Terminal</p>
-                                        <p className="text-gray-500 mt-2">Connected to: {instance.challenge_title}</p>
-                                        <p className="text-gray-500">Target IP: {instance.ip_address}</p>
-                                        <p className="text-gray-500 mb-4">Container: {instance.container_name}</p>
-                                        
-                                        <p className="text-yellow-400 mt-4">⚠️ Terminal Access (Development Mode)</p>
-                                        <p className="text-gray-400 mt-2">
-                                            Interactive terminal is not available in simulation mode.
-                                        </p>
-                                        
-                                        <p className="text-cyan-400 mt-4">Recommended Tools:</p>
-                                        <p className="text-gray-300 mt-2">→ Use your local terminal to interact with the target</p>
-                                        <p className="text-gray-400 ml-4">$ ping {instance.ip_address}</p>
-                                        <p className="text-gray-400 ml-4">$ nmap -sV {instance.ip_address}</p>
-                                        <p className="text-gray-400 ml-4">$ curl http://{instance.ip_address}</p>
-                                        
-                                        <p className="text-cyan-400 mt-4">With OpenVPN:</p>
-                                        <p className="text-gray-400 ml-4">$ sudo openvpn xploitrum.ovpn</p>
-                                        <p className="text-gray-400 ml-4 mt-2"># Then access the target directly</p>
-                                        
-                                        <div className="mt-6 p-4 bg-gray-900 rounded border border-cyber-400/30">
-                                            <p className="text-white mb-2">💡 Quick Start:</p>
-                                            <ol className="text-gray-400 space-y-1 ml-4">
-                                                <li>1. Download the OpenVPN config from the Instances tab</li>
-                                                <li>2. Connect: <code className="text-cyber-400">sudo openvpn xploitrum.ovpn</code></li>
-                                                <li>3. Scan the target: <code className="text-cyber-400">nmap {instance.ip_address}</code></li>
-                                                <li>4. Find vulnerabilities and capture the flag!</li>
-                                            </ol>
-                                        </div>
-                                        
-                                        <p className="text-green-400 mt-6 animate-pulse">root@kali:~# _</p>
-                                    </div>
+                            <div className="w-full h-full flex items-center justify-center bg-background">
+                                <div className="text-center">
+                                    <Monitor className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                                    <p className="text-gray-400">No web interface available</p>
+                                    <p className="text-sm text-gray-500 mt-2">
+                                        This challenge may not have a web interface
+                                    </p>
                                 </div>
                             </div>
                         )}
                     </div>
-                </div>
+                </motion.div>
+
+                {/* Terminal Section */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className={`cyber-border rounded-lg bg-card overflow-hidden ${
+                        isTerminalFullscreen ? 'fixed inset-4 z-50' : ''
+                    }`}
+                >
+                    {/* Terminal Header */}
+                    <div className="bg-card/50 border-b border-gray-800 p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <TerminalIcon className="h-5 w-5 text-green-400" />
+                            <span className="font-mono text-sm text-gray-400">
+                                Terminal - {instance.container_name}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                onClick={() => setIsTerminalFullscreen(!isTerminalFullscreen)}
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-400 hover:text-white"
+                            >
+                                {isTerminalFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Terminal Content */}
+                    <div className={isTerminalFullscreen ? 'h-[calc(100vh-180px)]' : 'h-[400px]'}>
+                        <div className="w-full h-full bg-black p-4 font-mono text-green-400 text-sm overflow-auto">
+                            <div className="space-y-2">
+                                <div>
+                                    <span className="text-cyan-400">root@{instance.container_name}</span>
+                                    <span className="text-white">:</span>
+                                    <span className="text-blue-400">~</span>
+                                    <span className="text-white">$ </span>
+                                    <span className="animate-pulse">_</span>
+                                </div>
+                                <div className="text-yellow-400 mt-4">
+                                    <p>⚠️ Web Terminal Integration Coming Soon!</p>
+                                    <p className="text-gray-500 mt-2">This terminal will connect to your container via WebSocket.</p>
+                                    <p className="text-gray-500">For now, you can access the container via:</p>
+                                    <div className="mt-3 text-white">
+                                        <p className="text-cyan-400">SSH Access (if available):</p>
+                                        <p className="bg-gray-900 p-2 rounded mt-1">
+                                            ssh root@{instance.ip_address || 'container-ip'}
+                                        </p>
+                                    </div>
+                                    <div className="mt-3 text-white">
+                                        <p className="text-cyan-400">Docker Exec:</p>
+                                        <p className="bg-gray-900 p-2 rounded mt-1">
+                                            docker exec -it {instance.container_name} /bin/bash
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Instance Info */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="cyber-border rounded-lg bg-card p-4"
+                >
+                    <h3 className="text-lg font-bold text-white mb-3">Instance Information</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                            <p className="text-gray-400">Container</p>
+                            <p className="text-white font-mono">{instance.container_name}</p>
+                        </div>
+                        <div>
+                            <p className="text-gray-400">IP Address</p>
+                            <p className="text-white font-mono">{instance.ip_address || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p className="text-gray-400">Status</p>
+                            <p className="text-green-400">{instance.status}</p>
+                        </div>
+                        <div>
+                            <p className="text-gray-400">Started</p>
+                            <p className="text-white">{new Date(instance.started_at).toLocaleTimeString()}</p>
+                        </div>
+                    </div>
+                </motion.div>
             </div>
         </div>
     )
 }
-
