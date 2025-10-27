@@ -3,7 +3,7 @@ name: Deploy to Production
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -11,85 +11,50 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    - name: Create deploy key
+      run: |
+        printf "%s\n" "${{ secrets.SSH_PRIVATE_KEY }}" > ./deploy_key
+        chmod 600 ./deploy_key
+      
     - name: 🚀 Deploy to Server
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.DROPLET_IP }}
         username: root
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        key_path: ./deploy_key
         port: 22
         script_stop: true
         script: |
-          set -e  # Exit on error
-          echo "🚀 Starting safe deployment..."
+          set -e
+          echo "🚀 Starting deployment..."
           
-          # Backup database (safety measure)
-          echo "📦 Creating database backup..."
-          mkdir -p ~/backups/pre-deployment-$(date +%Y%m%d_%H%M%S)
-          BACKUP_DIR=~/backups/pre-deployment-$(date +%Y%m%d_%H%M%S)
-          
-          # Backup PostgreSQL database
+          # Backup
+          mkdir -p /root/backups/pre-deployment-$(date +%Y%m%d_%H%M%S)
+          BACKUP_DIR=/root/backups/pre-deployment-$(date +%Y%m%d_%H%M%S)
           sudo -u postgres pg_dump xploitrum > $BACKUP_DIR/database_backup.sql || echo "⚠️ Could not backup database"
+          cp /home/xploitrum.org/backend/.env $BACKUP_DIR/.env || echo "⚠️ Could not backup .env"
           
-          # Backup environment files
-          cp ~/xploitrum.org/backend/.env $BACKUP_DIR/.env || echo "⚠️ Could not backup .env"
+          # Update
+          cd /home/xploitrum.org
+          git pull origin main
           
-          echo "✅ Backups created in $BACKUP_DIR"
-          
-          # Navigate to project
-          cd ~/xploitrum.org
-          
-          # Pull latest changes
-          echo "📥 Pulling from GitHub..."
-          git fetch origin
-          git pull origin main || git pull origin master
-          
-          # Get commit info
-          COMMIT=$(git rev-parse --short HEAD)
-          echo "📦 Deployed commit: $COMMIT"
-          
-          # Update backend
-          echo "🔧 Updating backend..."
+          # Backend
           cd backend
           source venv/bin/activate
           pip install -r requirements.txt --quiet --upgrade
-          
-          # Run database migrations
-          echo "🔧 Running database migrations..."
           python add_must_change_password_column.py || echo "⚠️ Column may already exist"
           python create_member_requests_table.py || echo "⚠️ Table may already exist"
-          
-          # Restart backend
           sudo systemctl restart xploitrum-backend
-          echo "⏳ Waiting for backend to start..."
           sleep 3
           
-          # Update frontend
-          echo "🎨 Updating frontend..."
+          # Frontend
           cd ../frontend
           npm install --silent
           npm run build
-          
-          # Restart frontend
           sudo systemctl restart xploitrum-frontend
-          echo "⏳ Waiting for frontend to start..."
           sleep 3
           
-          # Reload Nginx
+          # Reload
           sudo systemctl reload nginx
           
-          # Check status
           echo "✅ Deployment complete!"
-          echo "Backend: $(sudo systemctl is-active xploitrum-backend)"
-          echo "Frontend: $(sudo systemctl is-active xploitrum-frontend)"
-          echo "Nginx: $(sudo systemctl is-active nginx)"
-          echo "PostgreSQL: $(sudo systemctl is-active postgresql)"
-          
-    - name: ✅ Deployment Status
-      if: success()
-      run: echo "🎉 Successfully deployed to production!"
-      
-    - name: ❌ Deployment Failed
-      if: failure()
-      run: echo "❌ Deployment failed. Check logs on server."
-
