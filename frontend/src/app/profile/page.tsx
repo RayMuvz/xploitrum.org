@@ -55,17 +55,14 @@ export default function ProfilePage() {
                 email: editedEmail
             })
 
-            if (response.data) {
-                // Update user state directly
-                const updatedUser = response.data
-                updateProfile(updatedUser)
-                
-                toast({
-                    title: "Profile updated",
-                    description: "Your profile has been updated successfully."
-                })
-                setIsEditing(false)
-            }
+            toast({
+                title: "Profile updated",
+                description: "Your profile has been updated successfully."
+            })
+            setIsEditing(false)
+            
+            // Refresh user data to get updated info
+            window.location.reload()
         } catch (error: any) {
             console.error('Profile update error:', error)
             toast({
