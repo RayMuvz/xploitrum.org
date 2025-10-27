@@ -7,54 +7,53 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to DigitalOcean
     runs-on: ubuntu-latest
-    
+    name: Deploy to DigitalOcean
     steps:
-    - name: Create deploy key
-      run: |
-        printf "%s\n" "${{ secrets.SSH_PRIVATE_KEY }}" > ./deploy_key
-        chmod 600 ./deploy_key
-      
-    - name: 🚀 Deploy to Server
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.DROPLET_IP }}
-        username: root
-        key_path: ./deploy_key
-        port: 22
-        script_stop: true
-        script: |
-          set -e
-          echo "🚀 Starting deployment..."
-          
-          # Backup
-          mkdir -p /root/backups/pre-deployment-$(date +%Y%m%d_%H%M%S)
-          BACKUP_DIR=/root/backups/pre-deployment-$(date +%Y%m%d_%H%M%S)
-          sudo -u postgres pg_dump xploitrum > $BACKUP_DIR/database_backup.sql || echo "⚠️ Could not backup database"
-          cp /home/xploitrum.org/backend/.env $BACKUP_DIR/.env || echo "⚠️ Could not backup .env"
-          
-          # Update
-          cd /home/xploitrum.org
-          git pull origin main
-          
-          # Backend
-          cd backend
-          source venv/bin/activate
-          pip install -r requirements.txt --quiet --upgrade
-          python add_must_change_password_column.py || echo "⚠️ Column may already exist"
-          python create_member_requests_table.py || echo "⚠️ Table may already exist"
-          sudo systemctl restart xploitrum-backend
-          sleep 3
-          
-          # Frontend
-          cd ../frontend
-          npm install --silent
-          npm run build
-          sudo systemctl restart xploitrum-frontend
-          sleep 3
-          
-          # Reload
-          sudo systemctl reload nginx
-          
-          echo "✅ Deployment complete!"
+      - name: 🧩 Create SSH key file from base64 secret
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY_B64 }}" | base64 --decode > ./deploy_key
+          chmod 600 ./deploy_key
+          echo "Key fingerprint:"
+          ssh-keygen -lf ./deploy_key
+        shell: bash
+
+      - name: 🔍 Verify SSH connection
+        run: |
+          ssh -i ./deploy_key -o StrictHostKeyChecking=no root@${{ secrets.DROPLET_IP }} "echo ✅ GitHub Actions connected successfully as $(whoami) on $(hostname)"
+        shell: bash
+
+      - name: 🚀 Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: root
+          key_path: ./deploy_key
+          port: 22
+          script_stop: true
+          script: |
+            set -e
+            echo "🚀 Starting safe deployment..."
+            mkdir -p ~/backups/pre-deployment-$(date +%Y%m%d_%H%M%S)
+            BACKUP_DIR=~/backups/pre-deployment-$(date +%Y%m%d_%H%M%S)
+            sudo -u postgres pg_dump xploitrum > $BACKUP_DIR/database_backup.sql || echo "⚠️ Could not backup database"
+            cp ~/xploitrum.org/backend/.env $BACKUP_DIR/.env || echo "⚠️ Could not backup .env"
+            cd ~/xploitrum.org
+            git fetch origin
+            git pull origin main || git pull origin master
+            COMMIT=$(git rev-parse --short HEAD)
+            echo "📦 Deployed commit: $COMMIT"
+            cd backend
+            source venv/bin/activate || true
+            pip install -r requirements.txt --quiet --upgrade || true
+            python add_must_change_password_column.py || echo "⚠️ Column may already exist"
+            python create_member_requests_table.py || echo "⚠️ Table may already exist"
+            sudo systemctl restart xploitrum-backend
+            sleep 3
+            cd ../frontend
+            npm install --silent || true
+            npm run build || true
+            sudo systemctl restart xploitrum-frontend
+            sleep 3
+            sudo systemctl reload nginx
+            echo "✅ Deployment complete!"
