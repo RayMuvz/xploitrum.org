@@ -10,17 +10,29 @@ jobs:
     runs-on: ubuntu-latest
     name: Deploy to DigitalOcean
     steps:
-      - name: 🧩 Create SSH key file from base64 secret
+      - name: Decode SSH key (from base64) and show fingerprint
         run: |
           echo "${{ secrets.SSH_PRIVATE_KEY_B64 }}" | base64 --decode > ./deploy_key
           chmod 600 ./deploy_key
-          echo "Key fingerprint:"
-          ssh-keygen -lf ./deploy_key
+          echo "== derived public key from deploy_key =="
+          ssh-keygen -y -f ./deploy_key || true
+          echo "== fingerprint of deploy_key =="
+          ssh-keygen -lf ./deploy_key || true
         shell: bash
 
-      - name: 🔍 Verify SSH connection
+      - name: Show droplet authorized_keys fingerprints (via temporary SSH using your working key)
         run: |
-          ssh -i ./deploy_key -o StrictHostKeyChecking=no root@${{ secrets.DROPLET_IP }} "echo ✅ GitHub Actions connected successfully as $(whoami) on $(hostname)"
+          # This uses your working key (id_exploitdo) which you said works from the runner machine? 
+          # If your runner cannot use your laptop key, run the second command below locally instead.
+          echo "Attempting to connect using the known-working local key to list authorized_keys fingerprints..."
+          ssh -i ~/.ssh/id_exploitdo -o StrictHostKeyChecking=no root@${{ secrets.DROPLET_IP }} "echo '== authorized_keys contents =='; cat /root/.ssh/authorized_keys; echo '== authorized_keys fingerprints =='; while read -r line; do echo \"$line\" | ssh-keygen -lf -; done < /root/.ssh/authorized_keys" || echo "Could not run remote listing from runner; run the equivalent locally on your laptop and paste output."
+        shell: bash
+
+      - name: SSH verbose test (shows exactly what key is offered and server response)
+        run: |
+          echo "Running ssh -vvv using the runner's deploy_key (this will print 'Offering public key' lines)..."
+          ssh -vvv -i ./deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@${{ secrets.DROPLET_IP }} true || true
+          echo "Finished ssh -vvv test (exit code may be non-zero). Search the log above for 'Offering public key' and 'Permission denied'."
         shell: bash
 
       - name: 🚀 Deploy via SSH
