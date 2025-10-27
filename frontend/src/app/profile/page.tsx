@@ -18,7 +18,7 @@ interface UserStats {
 }
 
 export default function ProfilePage() {
-    const { user, updateUser, isAuthenticated } = useAuth()
+    const { user, updateProfile, isAuthenticated } = useAuth()
     const { toast } = useToast()
     const [stats, setStats] = useState<UserStats | null>(null)
     const [isEditing, setIsEditing] = useState(false)
@@ -56,7 +56,7 @@ export default function ProfilePage() {
             })
 
             if (response.data) {
-                updateUser(response.data)
+                await updateProfile(response.data)
                 toast({
                     title: "Profile updated",
                     description: "Your profile has been updated successfully."
