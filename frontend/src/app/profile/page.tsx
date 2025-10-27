@@ -56,7 +56,10 @@ export default function ProfilePage() {
             })
 
             if (response.data) {
-                await updateProfile(response.data)
+                // Update user state directly
+                const updatedUser = response.data
+                updateProfile(updatedUser)
+                
                 toast({
                     title: "Profile updated",
                     description: "Your profile has been updated successfully."
@@ -64,9 +67,10 @@ export default function ProfilePage() {
                 setIsEditing(false)
             }
         } catch (error: any) {
+            console.error('Profile update error:', error)
             toast({
                 title: "Error",
-                description: error.response?.data?.detail || "Failed to update profile",
+                description: error.response?.data?.detail || error.message || "Failed to update profile",
                 variant: "destructive"
             })
         }
