@@ -54,8 +54,10 @@ jobs:
           source venv/bin/activate
           pip install -r requirements.txt --quiet --upgrade
           
-          # NO DATABASE MIGRATIONS - Code is compatible with existing schema
-          echo "ℹ️ Skipping database migrations (code is backward compatible)"
+          # Run database migrations
+          echo "🔧 Running database migrations..."
+          python add_must_change_password_column.py || echo "⚠️ Column may already exist"
+          python create_member_requests_table.py || echo "⚠️ Table may already exist"
           
           # Restart backend
           sudo systemctl restart xploitrum-backend
