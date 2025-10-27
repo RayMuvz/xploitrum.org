@@ -41,14 +41,16 @@ conf = ConnectionConfig(
     VALIDATE_CERTS=True
 )
 
+admin_email = getattr(settings, 'ADMIN_EMAIL', 'admin@xploitrum.org')
+
 message = MessageSchema(
     subject="Test Email from XploitRUM",
-    recipients=[settings.ADMIN_EMAIL],
+    recipients=[admin_email],
     body="This is a test email to verify SMTP configuration is working.",
     subtype="html"
 )
 
-print(f"Attempting to send test email to {settings.ADMIN_EMAIL}...")
+print(f"Attempting to send test email to {admin_email}...")
 print(f"Using SMTP server: {smtp_server}:{settings.SMTP_PORT}")
 
 try:
