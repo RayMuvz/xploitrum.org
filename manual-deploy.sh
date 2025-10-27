@@ -10,12 +10,12 @@ echo "📦 Creating database backup..."
 mkdir -p ~/backups/pre-deployment-$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR=~/backups/pre-deployment-$(date +%Y%m%d_%H%M%S)
 sudo -u postgres pg_dump xploitrum > $BACKUP_DIR/database_backup.sql || echo "⚠️ Could not backup database"
-cp ~/xploitrum.org/backend/.env $BACKUP_DIR/.env || echo "⚠️ Could not backup .env"
+cp /home/xploitrum.org/backend/.env $BACKUP_DIR/.env || echo "⚠️ Could not backup .env"
 
 echo "✅ Backups created in $BACKUP_DIR"
 
 # Navigate to project
-cd ~/xploitrum.org
+cd /home/xploitrum.org
 
 # Pull latest changes
 echo "📥 Pulling from GitHub..."
