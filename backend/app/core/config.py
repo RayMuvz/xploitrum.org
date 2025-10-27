@@ -43,8 +43,7 @@ class Settings(BaseSettings):
     SMTP_HOST: Optional[str] = None
     SMTP_SERVER: Optional[str] = None  # Alias for SMTP_HOST for compatibility
     SMTP_PORT: int = 587
-    
-    _USERNAME: Optional[str] = None
+    SMTP_USERNAME: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     SMTP_TLS: bool = True
     FROM_EMAIL: str = "noreply@xploitrum.org"
