@@ -15,7 +15,7 @@ jobs:
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.DROPLET_IP }}
-        username: xploitrum
+        username: root
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: 22
         script_stop: true
@@ -29,7 +29,7 @@ jobs:
           BACKUP_DIR=~/backups/pre-deployment-$(date +%Y%m%d_%H%M%S)
           
           # Backup PostgreSQL database
-          pg_dump -U xploitrum xploitrum > $BACKUP_DIR/database_backup.sql || echo "⚠️ Could not backup database"
+          sudo -u postgres pg_dump xploitrum > $BACKUP_DIR/database_backup.sql || echo "⚠️ Could not backup database"
           
           # Backup environment files
           cp ~/xploitrum.org/backend/.env $BACKUP_DIR/.env || echo "⚠️ Could not backup .env"
