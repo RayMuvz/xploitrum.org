@@ -13,6 +13,7 @@ import uuid
 import secrets
 import string
 import asyncio
+import threading
 
 from app.core.database import get_db
 from app.core.auth import get_current_admin_user
@@ -438,8 +439,12 @@ async def accept_member_request(
         db.refresh(request)
         
         # Send email notification in background (non-blocking)
-        import asyncio
-        asyncio.create_task(send_member_acceptance_email(request.email, new_user.username, temp_password, request.first_name))
+        # Use a separate thread to avoid blocking the response
+        import threading
+        threading.Thread(
+            target=lambda: asyncio.run(send_member_acceptance_email(request.email, new_user.username, temp_password, request.first_name)),
+            daemon=True
+        ).start()
         
         print(f"User created: {new_user.email}, temp password: {temp_password}")
         
@@ -491,8 +496,12 @@ async def decline_member_request(
         db.refresh(request)
         
         # Send email notification in background (non-blocking)
-        import asyncio
-        asyncio.create_task(send_member_decline_email(request.email, request.first_name, notes))
+        # Use a separate thread to avoid blocking the response
+        import threading
+        threading.Thread(
+            target=lambda: asyncio.run(send_member_decline_email(request.email, request.first_name, notes)),
+            daemon=True
+        ).start()
         
         print(f"Request declined for: {request.email}")
         
