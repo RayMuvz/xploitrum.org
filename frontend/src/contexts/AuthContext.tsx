@@ -272,7 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const updateProfile = async (profileData: Partial<User>) => {
         try {
-            const response = await axios.put('/api/v1/auth/profile', profileData)
+            const response = await axios.put('/api/v1/auth/me', profileData)
             const updatedUser = response.data
 
             setUser(updatedUser)
