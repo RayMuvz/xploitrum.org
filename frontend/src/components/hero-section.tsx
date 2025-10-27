@@ -6,7 +6,7 @@ import { ArrowRight, Shield, Code, Users } from 'lucide-react'
 
 export function HeroSection() {
     return (
-        <section className="relative min-h-screen flex items-center justify-center overflow-hidden cyber-bg">
+        <section className="relative min-h-screen flex items-center justify-center overflow-hidden cyber-bg pt-16">
             {/* Animated background grid */}
             <div className="absolute inset-0 cyber-grid opacity-30" />
 

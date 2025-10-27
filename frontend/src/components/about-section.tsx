@@ -1,9 +1,63 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Target, Lightbulb, GraduationCap, Globe } from 'lucide-react'
 
+interface PlatformStats {
+    total_members: number
+    total_events: number
+    total_challenges: number
+    total_flags: number
+    active_instances: number
+    recent_solves: number
+}
+
 export function AboutSection() {
+    const [stats, setStats] = useState<PlatformStats>({
+        total_members: 0,
+        total_events: 0,
+        total_challenges: 0,
+        total_flags: 0,
+        active_instances: 0,
+        recent_solves: 0
+    })
+    const [customCount, setCustomCount] = useState(37)
+    const [isLoading, setIsLoading] = useState(true)
+
+    useEffect(() => {
+        fetchStats()
+        loadCustomCount()
+        // Auto-refresh stats every 30 seconds
+        const interval = setInterval(fetchStats, 30000)
+        return () => clearInterval(interval)
+    }, [])
+
+    const fetchStats = async () => {
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+            const response = await fetch(`${apiUrl}/api/v1/stats/platform`)
+
+            if (response.ok) {
+                const data = await response.json()
+                setStats(data)
+            }
+        } catch (error) {
+            console.error('Failed to fetch stats:', error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const loadCustomCount = () => {
+        const storedCount = localStorage.getItem('custom_member_count')
+        if (storedCount) {
+            setCustomCount(parseInt(storedCount, 10))
+        } else {
+            setCustomCount(37) // Default value
+        }
+    }
+
     return (
         <section className="py-24 cyber-bg">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -30,20 +84,28 @@ export function AboutSection() {
 
                         <div className="grid grid-cols-2 gap-6">
                             <div>
-                                <div className="text-3xl font-bold text-cyber-400 mb-2">37+</div>
+                                <div className="text-3xl font-bold text-cyber-400 mb-2">
+                                    {isLoading ? '...' : `${customCount}+`}
+                                </div>
                                 <div className="text-gray-400">Active Members</div>
                             </div>
                             <div>
-                                <div className="text-3xl font-bold text-neon-green mb-2">2+</div>
+                                <div className="text-3xl font-bold text-neon-green mb-2">
+                                    {isLoading ? '...' : `${stats.total_challenges || 0}+`}
+                                </div>
                                 <div className="text-gray-400">CTF Challenges</div>
                             </div>
                             <div>
-                                <div className="text-3xl font-bold text-cyber-400 mb-2">1</div>
+                                <div className="text-3xl font-bold text-cyber-400 mb-2">
+                                    {isLoading ? '...' : stats.total_events || 0}
+                                </div>
                                 <div className="text-gray-400">Events Hosted</div>
                             </div>
                             <div>
-                                <div className="text-3xl font-bold text-neon-green mb-2">24/7</div>
-                                <div className="text-gray-400">Platform Access</div>
+                                <div className="text-3xl font-bold text-neon-green mb-2">
+                                    {isLoading ? '...' : stats.total_flags || 0}
+                                </div>
+                                <div className="text-gray-400">Flags Captured</div>
                             </div>
                         </div>
                     </motion.div>

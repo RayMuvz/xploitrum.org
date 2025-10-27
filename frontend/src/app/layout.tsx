@@ -16,8 +16,11 @@ export const metadata: Metadata = {
     creator: 'XploitRUM',
     publisher: 'XploitRUM',
     icons: {
-        icon: '/XPLOIT LOGOTIPO WHITE.png',
-        shortcut: '/XPLOIT LOGOTIPO WHITE.png',
+        icon: [
+            { url: '/favicon.ico', sizes: 'any' },
+            { url: '/XPLOIT LOGOTIPO WHITE.png', type: 'image/png', sizes: '196x196' },
+        ],
+        shortcut: '/favicon.ico',
         apple: '/XPLOIT LOGOTIPO WHITE.png',
     },
     robots: {
@@ -31,11 +34,20 @@ export const metadata: Metadata = {
         title: 'XploitRUM',
         description: 'Professional cybersecurity organization and CTF platform for learning and competitions',
         siteName: 'XploitRUM',
+        images: [
+            {
+                url: '/XPLOIT LOGOTIPO WHITE.png',
+                width: 1200,
+                height: 630,
+                alt: 'XploitRUM Logo',
+            },
+        ],
     },
     twitter: {
         card: 'summary_large_image',
         title: 'XploitRUM',
         description: 'Professional cybersecurity organization and CTF platform for learning and competitions',
+        images: ['/XPLOIT LOGOTIPO WHITE.png'],
     },
     viewport: {
         width: 'device-width',
@@ -51,8 +63,10 @@ export default function RootLayout({
     return (
         <html lang="en" suppressHydrationWarning>
             <head>
+                <link rel="icon" href="/favicon.ico" sizes="any" />
                 <link rel="icon" href="/XPLOIT LOGOTIPO WHITE.png" type="image/png" />
                 <link rel="apple-touch-icon" href="/XPLOIT LOGOTIPO WHITE.png" />
+                <meta name="theme-color" content="#22d3ee" />
             </head>
             <body className={inter.className}>
                 <ThemeProvider

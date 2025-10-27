@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 
 const team = [
     {
@@ -10,36 +11,42 @@ const team = [
         role: 'President & Founder',
         year: '6th year ICOM',
         bio: 'Over 5+ cybersecurity positions in the past 3 years. Penetration Tester, Reverse Engineer and Overall Cybersecurity Engineer',
+        image: '/Chris.jpg',
     },
     {
         name: 'Osvaldo Figueroa',
         role: 'Vice-President',
         year: '4th year INSO',
         bio: 'Interest in Penetration Testing and Ethical hacking',
+        image: '/Osvaldo.jpg',
     },
     {
         name: 'Jan Rodriguez',
         role: 'Secretary',
         year: '4th year SICI',
         bio: 'Interest in Network Pentesting and Information Technologies',
+        image: '/Jan.jpg',
     },
     {
         name: 'Reymarie Algarín',
         role: 'Treasurer',
         year: '6th year INSO',
         bio: 'Interest in overall cybersecurity',
+        image: '/Rey.jpg',
     },
     {
         name: 'Naimarys Barbot',
         role: 'Social Media Manager',
         year: '1st year Marketing',
         bio: 'Interest in overall cybersecurity',
+        image: '/Nai.jpg',
     },
     {
         name: 'Xamyl Rios',
         role: 'Vocal',
         year: '1st year ICOM',
         bio: 'Interest in Penetration testing and Ethical hacking',
+        image: '/Xamyl.jpg',
     },
 ]
 
@@ -134,8 +141,19 @@ export function TeamSection() {
                                         {/* Avatar */}
                                         <div className="flex-shrink-0">
                                             <div className="w-40 h-40 rounded-full bg-gradient-to-r from-cyber-400 to-neon-green p-1">
-                                                <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
-                                                    <div className="text-6xl text-cyber-400">👤</div>
+                                                <div className="w-full h-full rounded-full bg-card overflow-hidden">
+                                                    <Image
+                                                        src={team[currentIndex].image}
+                                                        alt={team[currentIndex].name}
+                                                        width={160}
+                                                        height={160}
+                                                        className="w-full h-full object-cover scale-150"
+                                                        style={{
+                                                            objectPosition: team[currentIndex].name === 'Osvaldo Figueroa'
+                                                                ? '55% 30%'
+                                                                : 'center 30%'
+                                                        }}
+                                                    />
                                                 </div>
                                             </div>
                                         </div>

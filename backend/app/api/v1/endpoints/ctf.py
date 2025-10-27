@@ -4,6 +4,7 @@ XploitRUM CTF Platform - CTF Endpoints
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -336,7 +337,7 @@ async def get_user_stats(
     # Get category breakdown
     category_stats = db.query(
         Challenge.category,
-        db.func.count(Submission.id).label('solves')
+        func.count(Submission.id).label('solves')
     ).join(Submission).filter(
         Submission.user_id == current_user.id,
         Submission.status == "correct"
@@ -347,7 +348,7 @@ async def get_user_stats(
     # Get difficulty breakdown
     difficulty_stats = db.query(
         Challenge.difficulty,
-        db.func.count(Submission.id).label('solves')
+        func.count(Submission.id).label('solves')
     ).join(Submission).filter(
         Submission.user_id == current_user.id,
         Submission.status == "correct"

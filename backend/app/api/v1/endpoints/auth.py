@@ -5,6 +5,7 @@ XploitRUM CTF Platform - Authentication Endpoints
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
@@ -203,7 +204,8 @@ def get_current_user_info(
         "role": current_user.role.value,  # Convert enum to string
         "score": current_user.score,
         "rank": current_user.rank,
-        "created_at": current_user.created_at.isoformat() if current_user.created_at else None
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+        "must_change_password": current_user.must_change_password if hasattr(current_user, 'must_change_password') else False
     }
 
 
@@ -225,3 +227,109 @@ def confirm_password_reset(
     """Confirm password reset"""
     # Implementation would verify token and update password
     return {"message": "Password reset successfully"}
+
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class UpdateProfile(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+
+
+@router.put("/me")
+def update_profile(
+    profile_data: UpdateProfile,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update user profile"""
+    try:
+        if profile_data.full_name is not None:
+            current_user.full_name = profile_data.full_name
+        
+        if profile_data.email is not None:
+            # Check if email is already taken
+            existing_user = db.execute(
+                select(User).where(
+                    User.email == profile_data.email,
+                    User.id != current_user.id
+                )
+            ).scalar_one_or_none()
+            
+            if existing_user:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email already in use"
+                )
+            
+            current_user.email = profile_data.email
+        
+        db.commit()
+        db.refresh(current_user)
+        
+        # Return updated user info in same format as /me endpoint
+        return {
+            "id": current_user.id,
+            "username": current_user.username,
+            "email": current_user.email,
+            "full_name": current_user.full_name,
+            "role": current_user.role.value,
+            "score": current_user.score,
+            "rank": current_user.rank,
+            "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+            "must_change_password": current_user.must_change_password if hasattr(current_user, 'must_change_password') else False
+        }
+        
+    except ValidationError:
+        raise
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Database session error: {str(e)}")  # Debug
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update profile: {str(e)}"
+        )
+
+
+@router.post("/change-password")
+def change_password(
+    password_data: ChangePassword,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Change user password"""
+    try:
+        from app.core.auth import verify_password, get_password_hash
+        
+        # Verify current password
+        if not verify_password(password_data.current_password, current_user.password_hash):
+            raise ValidationError("Current password is incorrect")
+        
+        # Validate new password
+        if len(password_data.new_password) < 8:
+            raise ValidationError("New password must be at least 8 characters long")
+        
+        # Update password
+        current_user.password_hash = get_password_hash(password_data.new_password)
+        current_user.must_change_password = False  # Clear the flag after password change
+        
+        db.commit()
+        db.refresh(current_user)
+        
+        return {"message": "Password changed successfully"}
+        
+    except ValidationError:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to change password: {str(e)}"
+        )

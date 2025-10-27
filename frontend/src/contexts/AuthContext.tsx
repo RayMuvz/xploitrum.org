@@ -19,6 +19,7 @@ interface User {
     created_at: string
     last_login?: string
     is_active: boolean
+    must_change_password?: boolean
 }
 
 interface AuthTokens {
@@ -87,8 +88,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     // Verify token is still valid
                     try {
                         const response = await axios.get('/api/v1/auth/me')
-                        setUser(response.data)
+                        const userData = response.data
+                        setUser(userData)
                         setTokens(parsedTokens)
+
+                        // Check if user must change password and redirect
+                        if (userData.must_change_password && window.location.pathname !== '/change-password') {
+                            router.push('/change-password')
+                        }
                     } catch (error) {
                         // Token is invalid, try to refresh
                         try {
@@ -172,13 +179,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             // Get user info
             const userResponse = await axios.get('/api/v1/auth/me')
-            setUser(userResponse.data)
-            localStorage.setItem('user', JSON.stringify(userResponse.data))
+            const userData = userResponse.data
+            setUser(userData)
+            localStorage.setItem('user', JSON.stringify(userData))
 
             toast({
                 title: "Welcome back!",
-                description: `Hello ${userResponse.data.username}`,
+                description: `Hello ${userData.username}`,
             })
+
+            // Check if user must change password
+            if (userData.must_change_password) {
+                toast({
+                    title: "Password Change Required",
+                    description: "You must change your password before continuing.",
+                    variant: "destructive",
+                })
+                router.push('/change-password')
+                return
+            }
+
+            router.push('/dashboard')
 
         } catch (error: any) {
             const message = error.response?.data?.detail || 'Login failed'

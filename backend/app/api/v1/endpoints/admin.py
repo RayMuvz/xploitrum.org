@@ -101,11 +101,84 @@ async def get_dashboard_stats(
         )
 
 
+class CreateUser(BaseModel):
+    username: str
+    email: str
+    password: str
+    full_name: Optional[str] = None
+    role: str = "user"
+
+
+class StatusUpdate(BaseModel):
+    status: str
+
+
+@router.post("/users", response_model=UserManagement)
+def create_user(
+    user_data: CreateUser,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new user (admin only)"""
+    try:
+        from app.core.auth import get_password_hash
+        from app.models.user import UserRole, UserStatus
+        
+        # Check if user already exists
+        existing_user = db.execute(
+            select(User).where(
+                (User.username == user_data.username) | (User.email == user_data.email)
+            )
+        ).scalar_one_or_none()
+        
+        if existing_user:
+            raise ValidationError("Username or email already exists")
+        
+        # Validate role
+        if user_data.role not in [r.value for r in UserRole]:
+            raise ValidationError("Invalid role")
+        
+        # Create new user
+        hashed_password = get_password_hash(user_data.password)
+        new_user = User(
+            username=user_data.username,
+            email=user_data.email,
+            password_hash=hashed_password,
+            full_name=user_data.full_name,
+            role=UserRole(user_data.role),
+            status=UserStatus.ACTIVE
+        )
+        
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        
+        return UserManagement(
+            id=new_user.id,
+            username=new_user.username,
+            email=new_user.email,
+            role=new_user.role.value,
+            status=new_user.status.value,
+            score=new_user.score,
+            created_at=new_user.created_at.isoformat(),
+            last_login=new_user.last_login.isoformat() if new_user.last_login else None
+        )
+        
+    except ValidationError:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create user: {str(e)}"
+        )
+
+
 @router.get("/users", response_model=List[UserManagement])
-async def get_all_users(
+def get_all_users(
     limit: int = 100,
     offset: int = 0,
-    status: Optional[UserStatus] = None,
+    status_filter: Optional[UserStatus] = None,
     search: Optional[str] = None,
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
@@ -116,8 +189,8 @@ async def get_all_users(
         
         # Apply filters
         filters = []
-        if status:
-            filters.append(User.status == status)
+        if status_filter:
+            filters.append(User.status == status_filter)
         if search:
             filters.append(
                 (User.username.ilike(f"%{search}%")) |
@@ -130,7 +203,7 @@ async def get_all_users(
         
         query = query.order_by(User.created_at.desc()).offset(offset).limit(limit)
         
-        result = await db.execute(query)
+        result = db.execute(query)
         users = result.scalars().all()
         
         return [
@@ -153,48 +226,59 @@ async def get_all_users(
             detail="Failed to get users"
         )
 
-
 @router.put("/users/{user_id}/status")
-async def update_user_status(
+def update_user_status(
     user_id: int,
-    status: UserStatus,
+    status_data: StatusUpdate,
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """Update user status (admin only)"""
     try:
-        user = await db.get(User, user_id)
+        user = db.get(User, user_id)
         if not user:
             raise NotFoundError("User not found")
         
         if user.id == current_user.id:
             raise ValidationError("Cannot modify your own status")
         
-        user.status = status
-        await db.commit()
+        # Convert string to enum
+        from app.models.user import UserStatus as UserStatusEnum
+        try:
+            status_enum = UserStatusEnum(status_data.status)
+        except ValueError:
+            raise ValidationError("Invalid status")
         
-        return {"message": f"User status updated to {status.value}"}
+        user.status = status_enum
+        db.commit()
+        db.refresh(user)
+        
+        return {"message": f"User status updated to {status_data.status}"}
         
     except (NotFoundError, ValidationError):
         raise
     except Exception as e:
-        await db.rollback()
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update user status"
         )
 
 
+class RoleUpdate(BaseModel):
+    role: str
+
+
 @router.put("/users/{user_id}/role")
-async def update_user_role(
+def update_user_role(
     user_id: int,
-    role: str,
+    role_data: RoleUpdate,
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """Update user role (admin only)"""
     try:
-        user = await db.get(User, user_id)
+        user = db.get(User, user_id)
         if not user:
             raise NotFoundError("User not found")
         
@@ -202,21 +286,53 @@ async def update_user_role(
             raise ValidationError("Cannot modify your own role")
         
         from app.models.user import UserRole
-        if role not in [r.value for r in UserRole]:
+        if role_data.role not in [r.value for r in UserRole]:
             raise ValidationError("Invalid role")
         
-        user.role = UserRole(role)
-        await db.commit()
+        user.role = UserRole(role_data.role)
+        db.commit()
+        db.refresh(user)
         
-        return {"message": f"User role updated to {role}"}
+        return {"message": f"User role updated to {role_data.role}"}
         
     except (NotFoundError, ValidationError):
         raise
     except Exception as e:
-        await db.rollback()
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update user role"
+        )
+
+
+@router.delete("/users/{user_id}")
+def delete_user(
+    user_id: int,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a user (admin only)"""
+    try:
+        user = db.get(User, user_id)
+        if not user:
+            raise NotFoundError("User not found")
+        
+        if user.id == current_user.id:
+            raise ValidationError("Cannot delete your own account")
+        
+        # Delete the user (cascade will handle related records)
+        db.delete(user)
+        db.commit()
+        
+        return {"message": f"User {user.username} has been deleted successfully"}
+        
+    except (NotFoundError, ValidationError):
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete user: {str(e)}"
         )
 
 

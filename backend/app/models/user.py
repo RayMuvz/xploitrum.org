@@ -72,6 +72,7 @@ class User(Base):
     locked_until = Column(DateTime(timezone=True), nullable=True)
     password_reset_token = Column(String(255), nullable=True)
     password_reset_expires = Column(DateTime(timezone=True), nullable=True)
+    must_change_password = Column(Boolean, default=False, nullable=False)
     
     # Relationships
     instances = relationship("Instance", back_populates="user", cascade="all, delete-orphan")

@@ -31,6 +31,9 @@ export function Navbar() {
                         <a href="/events" className="text-gray-300 hover:text-cyber-400 transition-colors">
                             Events
                         </a>
+                        <a href="/merch" className="text-gray-300 hover:text-cyber-400 transition-colors">
+                            Merchandise
+                        </a>
                         <a href="/contact" className="text-gray-300 hover:text-cyber-400 transition-colors">
                             Contact
                         </a>
@@ -104,8 +107,8 @@ export function Navbar() {
 
             {/* Mobile Navigation */}
             {isOpen && (
-                <div className="md:hidden border-t border-border">
-                    <div className="px-2 pt-2 pb-3 space-y-1">
+                <div className="md:hidden border-t border-border absolute top-full left-0 right-0 bg-background/95 backdrop-blur-md shadow-lg">
+                    <div className="px-2 pt-2 pb-3 space-y-1 max-h-[calc(100vh-4rem)] overflow-y-auto">
                         <a
                             href="/"
                             className="block px-3 py-2 text-gray-300 hover:text-cyber-400 transition-colors"
@@ -123,6 +126,12 @@ export function Navbar() {
                             className="block px-3 py-2 text-gray-300 hover:text-cyber-400 transition-colors"
                         >
                             Events
+                        </a>
+                        <a
+                            href="/merch"
+                            className="block px-3 py-2 text-gray-300 hover:text-cyber-400 transition-colors"
+                        >
+                            Merchandise
                         </a>
                         <a
                             href="/contact"

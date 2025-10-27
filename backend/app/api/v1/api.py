@@ -4,7 +4,7 @@ XploitRUM CTF Platform - API Router
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, users, challenges, instances, submissions, admin, registration, ctf, events, vpn, contact, stats
+from app.api.v1.endpoints import auth, users, challenges, instances, submissions, admin, registration, ctf, events, vpn, contact, stats, member_requests
 
 api_router = APIRouter()
 
@@ -21,3 +21,4 @@ api_router.include_router(events.router, prefix="/events", tags=["events"])
 api_router.include_router(vpn.router, prefix="/vpn", tags=["vpn"])
 api_router.include_router(contact.router, tags=["contact"])
 api_router.include_router(stats.router, prefix="/stats", tags=["statistics"])
+api_router.include_router(member_requests.router, prefix="/member-requests", tags=["member-requests"])

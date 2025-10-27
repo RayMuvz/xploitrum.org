@@ -8,6 +8,7 @@ from .instance import Instance
 from .submission import Submission
 from .log import Log
 from .event import Event
+from .member_request import MemberRequest, MemberRequestStatus
 
 __all__ = [
     "User",
@@ -16,5 +17,7 @@ __all__ = [
     "Instance",
     "Submission",
     "Log",
-    "Event"
+    "Event",
+    "MemberRequest",
+    "MemberRequestStatus"
 ]

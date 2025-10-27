@@ -6,17 +6,23 @@ import { motion } from 'framer-motion'
 interface PlatformStats {
     total_members: number
     total_events: number
+    total_challenges: number
+    total_flags: number
 }
 
 export function StatsSection() {
     const [stats, setStats] = useState<PlatformStats>({
         total_members: 0,
-        total_events: 0
+        total_events: 0,
+        total_challenges: 0,
+        total_flags: 0
     })
     const [isLoading, setIsLoading] = useState(true)
+    const [customCount, setCustomCount] = useState(0)
 
     useEffect(() => {
         fetchStats()
+        loadCustomCount()
         // Refresh stats every 30 seconds
         const interval = setInterval(fetchStats, 30000)
         return () => clearInterval(interval)
@@ -38,15 +44,26 @@ export function StatsSection() {
         }
     }
 
+    const loadCustomCount = () => {
+        const storedCount = localStorage.getItem('custom_member_count')
+        if (storedCount) {
+            setCustomCount(parseInt(storedCount, 10))
+        } else {
+            setCustomCount(37) // Default value
+        }
+    }
+
     const displayStats = [
-        { label: 'Active Members', value: stats.total_members },
+        { label: 'Active Members', value: customCount || stats.total_members },
         { label: 'Upcoming Events', value: stats.total_events },
+        { label: 'Active Challenges', value: stats.total_challenges || 0 },
+        { label: 'Flags Captured', value: stats.total_flags || 0 },
     ]
 
     return (
         <section className="py-16 bg-card/50">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 justify-items-center">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 justify-items-center">
                     {displayStats.map((stat, index) => (
                         <motion.div
                             key={index}

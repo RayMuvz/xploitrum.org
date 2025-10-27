@@ -41,11 +41,19 @@ class Settings(BaseSettings):
     
     # Email
     SMTP_HOST: Optional[str] = None
+    SMTP_SERVER: Optional[str] = None  # Alias for SMTP_HOST for compatibility
     SMTP_PORT: int = 587
-    SMTP_USERNAME: Optional[str] = None
+    
+    _USERNAME: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     SMTP_TLS: bool = True
     FROM_EMAIL: str = "noreply@xploitrum.org"
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # If SMTP_HOST is not set but SMTP_SERVER is, use SMTP_SERVER
+        if not self.SMTP_HOST and self.SMTP_SERVER:
+            self.SMTP_HOST = self.SMTP_SERVER
     
     # Docker
     DOCKER_HOST: str = "unix:///var/run/docker.sock"
