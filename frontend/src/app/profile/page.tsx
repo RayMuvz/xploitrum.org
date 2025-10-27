@@ -49,11 +49,15 @@ export default function ProfilePage() {
 
     const handleSave = async () => {
         try {
+            console.log('Starting profile update...')
+            
             // Update user info via API
             const response = await axios.put('/api/v1/auth/me', {
                 full_name: editedName,
                 email: editedEmail
             })
+
+            console.log('Profile update response:', response.data)
 
             toast({
                 title: "Profile updated",
@@ -61,10 +65,18 @@ export default function ProfilePage() {
             })
             setIsEditing(false)
             
-            // Refresh user data to get updated info
-            window.location.reload()
+            // Small delay before reload to show the toast
+            setTimeout(() => {
+                window.location.reload()
+            }, 500)
         } catch (error: any) {
-            console.error('Profile update error:', error)
+            console.error('Profile update error details:', {
+                error,
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+                statusText: error.response?.statusText
+            })
             toast({
                 title: "Error",
                 description: error.response?.data?.detail || error.message || "Failed to update profile",
