@@ -41,6 +41,7 @@ export function Footer() {
                             <li><a href="/about" className="text-gray-400 hover:text-cyber-400 transition-colors">About Us</a></li>
                             <li><a href="/team" className="text-gray-400 hover:text-cyber-400 transition-colors">Team</a></li>
                             <li><a href="/events" className="text-gray-400 hover:text-cyber-400 transition-colors">Events</a></li>
+                            <li><a href="/merch" className="text-gray-400 hover:text-cyber-400 transition-colors">Merchandise</a></li>
                             <li><a href="/sponsors" className="text-gray-400 hover:text-cyber-400 transition-colors">Sponsors</a></li>
                         </ul>
                     </div>
