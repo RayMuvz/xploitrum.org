@@ -12,6 +12,9 @@ services:
       - NEXT_PUBLIC_API_URL=https://api.xploitrum.org
       - NEXT_PUBLIC_CTF_URL=https://ctf.xploitrum.org
       - NEXT_PUBLIC_LAB_URL=https://lab.xploitrum.org
+      - NEXT_PUBLIC_SHOPIFY_STORE_URL=${SHOPIFY_STORE_URL:-shop.xploitrum.org}
+      - NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN=${SHOPIFY_STOREFRONT_ACCESS_TOKEN}
+      - NEXT_PUBLIC_SHOPIFY_COLLECTION_ID=${SHOPIFY_COLLECTION_ID}
     volumes:
       - ./frontend:/app
       - /app/node_modules
