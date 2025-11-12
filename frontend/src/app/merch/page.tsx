@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import { ShoppingBag, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 // Declare ShopifyBuy on window for TypeScript
 declare global {
@@ -20,11 +20,34 @@ export default function MerchPage() {
     const buyButtonRef = useRef<HTMLDivElement>(null)
     const isInitializedRef = useRef(false) // Track if already initialized
 
+    const resolvedCollectionId = useMemo(() => {
+        if (shopifyCollectionId && shopifyCollectionId.trim().length > 0) {
+            return shopifyCollectionId.trim()
+        }
+
+        if (shopifyCollectionUrl && shopifyCollectionUrl.trim().length > 0) {
+            try {
+                const url = new URL(
+                    shopifyCollectionUrl.startsWith('http')
+                        ? shopifyCollectionUrl
+                        : `https://${shopifyCollectionUrl}`
+                )
+                const pathParts = url.pathname.split('/').filter(Boolean)
+                const handle = pathParts[pathParts.length - 1]
+
+                if (handle) {
+                    return handle
+                }
+            } catch (error) {
+                console.error('Invalid Shopify collection URL:', shopifyCollectionUrl, error)
+            }
+        }
+
+        return undefined
+    }, [shopifyCollectionId, shopifyCollectionUrl])
+
     // Check if Shopify is configured
-    const isShopifyConfigured = Boolean(
-        (shopifyCollectionUrl && shopifyStorefrontToken && shopifyStoreUrl) ||
-        (shopifyStorefrontToken && shopifyStoreUrl && shopifyCollectionId)
-    )
+    const isShopifyConfigured = Boolean(shopifyStoreUrl && shopifyStorefrontToken && resolvedCollectionId)
 
     useEffect(() => {
         if (!isShopifyConfigured || !buyButtonRef.current || isInitializedRef.current) return
@@ -72,13 +95,23 @@ export default function MerchPage() {
 
             const ui = window.ShopifyBuy.UI.init(client)
 
-            const collectionId = shopifyCollectionId || shopifyCollectionUrl?.split('/').pop()
+            if (resolvedCollectionId) {
+                const collectionConfig: Record<string, string | number> = {}
+                if (/^\d+$/.test(resolvedCollectionId)) {
+                    collectionConfig.id = resolvedCollectionId
+                } else {
+                    collectionConfig.handle = resolvedCollectionId
+                }
 
-            if (collectionId) {
                 ui.createComponent('collection', {
-                    id: collectionId,
+                    ...collectionConfig,
                     node: buyButtonRef.current,
                     options: {
+                        collection: {
+                            title: false,
+                            productsPerPage: 48,
+                            pagination: true,
+                        },
                         product: {
                             contents: {
                                 img: true,
@@ -150,6 +183,8 @@ export default function MerchPage() {
                         },
                     },
                 })
+            } else {
+                console.warn('Shopify collection identifier is missing. Please check your environment variables.')
             }
         }
 
@@ -157,8 +192,16 @@ export default function MerchPage() {
 
         return () => {
             if (cleanup) cleanup()
+            isInitializedRef.current = false
         }
-    }, [isShopifyConfigured])
+    }, [
+        isShopifyConfigured,
+        resolvedCollectionId,
+        shopifyStoreUrl,
+        shopifyStorefrontToken,
+        shopifyCollectionUrl,
+        shopifyCollectionId,
+    ])
 
     return (
         <div className="min-h-screen bg-background pt-16">
