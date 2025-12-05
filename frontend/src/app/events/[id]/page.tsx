@@ -104,9 +104,6 @@ export default async function EventPage({ params }: PageProps) {
         redirect('/events')
     }
 
-    const { slugify } = await import('@/lib/utils')
-    const slug = slugify(event.title)
-
-    return <EventDetailPage eventSlug={slug} eventId={event.id} initialEvent={event} />
+    return <EventDetailPage eventId={params.id} initialEvent={event} />
 }
 

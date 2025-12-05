@@ -8,7 +8,7 @@ export async function GET(
         const eventId = params.id
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
         
-        const response = await fetch(`${apiUrl}/api/v1/events/${eventId}`, {
+        const response = await fetch(`${apiUrl}/api/v1/events/${encodeURIComponent(eventId)}`, {
             headers: {
                 'Accept': 'application/json',
             },
