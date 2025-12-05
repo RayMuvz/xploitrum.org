@@ -130,3 +130,19 @@ export function throttle<T extends (...args: any[]) => any>(
         }
     }
 }
+
+/**
+ * Convert a string to a URL-friendly slug
+ * Example: "My Event Title" -> "my-event-title"
+ */
+export function slugify(text: string): string {
+    return text
+        .toString()
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')        // Replace spaces with dashes
+        .replace(/[^\w\-]+/g, '')    // Remove all non-word chars except dashes
+        .replace(/\-\-+/g, '-')      // Replace multiple dashes with single dash
+        .replace(/^-+/, '')          // Trim dash from start
+        .replace(/-+$/, '')          // Trim dash from end
+}

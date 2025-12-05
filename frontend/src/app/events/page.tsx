@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, Clock, MapPin, Users, Trophy, Award, Plus, Filter, X, Mail, Phone, User as UserIcon } from 'lucide-react'
+import { Calendar, Clock, MapPin, Users, Trophy, Award, Plus, Filter, X, Mail, Phone, User as UserIcon, Share2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
+import { slugify } from '@/lib/utils'
 
 interface Event {
     id: number
@@ -57,6 +58,20 @@ export default function EventsPage() {
         // Set up real-time updates every 30 seconds
         const interval = setInterval(fetchEvents, 30000)
         return () => clearInterval(interval)
+    }, [])
+
+    // Handle event ID from URL query params (redirect to dedicated event page)
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search)
+        const eventIdParam = urlParams.get('event')
+        
+        if (eventIdParam) {
+            const eventId = parseInt(eventIdParam, 10)
+            if (!isNaN(eventId)) {
+                // Redirect to dedicated event page for rich previews
+                window.location.href = `/events/${eventId}`
+            }
+        }
     }, [])
 
     const fetchEvents = async () => {
@@ -227,6 +242,71 @@ export default function EventsPage() {
         }
     }
 
+    // Check if event is active (not ended)
+    const isEventActive = (event: Event) => {
+        const now = new Date()
+        const endDate = new Date(event.end_date)
+        return endDate > now
+    }
+
+    // Get event-specific share URL with slug
+    const getEventShareUrl = (event: Event) => {
+        const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://xploitrum.org'
+        const slug = slugify(event.title)
+        return `${baseUrl}/events/${slug}`
+    }
+
+    // Share event using native Web Share API with rich metadata
+    const shareEvent = async (event: Event) => {
+        const eventUrl = getEventShareUrl(event)
+        const dateTime = `${formatDate(event.start_date)} at ${formatTime(event.start_date)} - ${formatTime(event.end_date)}`
+        const location = event.is_virtual ? (event.meeting_link || 'Virtual Event') : (event.location || 'Location TBA')
+        
+        // Create share data with metadata for rich link previews
+        const shareData: ShareData = {
+            title: event.title,
+            text: `${event.description.substring(0, 200)}${event.description.length > 200 ? '...' : ''}\n\n📅 ${dateTime}\n📍 ${location}`,
+            url: eventUrl
+        }
+
+        try {
+            // Check if Web Share API is supported
+            if (navigator.share && navigator.canShare(shareData)) {
+                await navigator.share(shareData)
+                toast({
+                    title: "Shared!",
+                    description: "Event shared successfully"
+                })
+            } else {
+                // Fallback: copy link to clipboard
+                await navigator.clipboard.writeText(eventUrl)
+                toast({
+                    title: "Link Copied!",
+                    description: "Event link has been copied to your clipboard"
+                })
+            }
+        } catch (error: any) {
+            // User cancelled or error occurred
+            if (error.name !== 'AbortError') {
+                console.error('Error sharing:', error)
+                // Fallback: copy link to clipboard
+                try {
+                    await navigator.clipboard.writeText(eventUrl)
+                    toast({
+                        title: "Link Copied!",
+                        description: "Event link has been copied to your clipboard"
+                    })
+                } catch (clipError) {
+                    toast({
+                        title: "Share Failed",
+                        description: "Unable to share event. Please try again.",
+                        variant: "destructive"
+                    })
+                }
+            }
+        }
+    }
+
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -344,6 +424,20 @@ export default function EventsPage() {
                                         >
                                             Details
                                         </button>
+
+                                        {/* Share Button - Only for active events */}
+                                        {isEventActive(event) && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    shareEvent(event)
+                                                }}
+                                                className="border border-cyber-400 text-cyber-400 px-3 py-2 rounded text-sm font-semibold hover:bg-cyber-400 hover:text-black transition-all"
+                                                title="Share event"
+                                            >
+                                                <Share2 className="h-4 w-4" />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -516,8 +610,26 @@ export default function EventsPage() {
                                         Register Now
                                     </Button>
                                 )}
+                                
+                                {/* Share Button - Only for active events */}
+                                {isEventActive(selectedEvent) && (
+                                    <Button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            shareEvent(selectedEvent)
+                                        }}
+                                        variant="outline"
+                                        className="border-cyber-400 text-cyber-400 hover:bg-cyber-400 hover:text-black"
+                                    >
+                                        <Share2 className="h-4 w-4 mr-2" />
+                                        Share
+                                    </Button>
+                                )}
+
                                 <Button
-                                    onClick={() => setShowDetailsModal(false)}
+                                    onClick={() => {
+                                        setShowDetailsModal(false)
+                                    }}
                                     variant="outline"
                                     className="flex-1 border-gray-600 text-gray-400 hover:bg-gray-800"
                                 >

@@ -1,11 +1,14 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Navbar } from '@/components/navbar'
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.xploitrum.org'
+
 export const metadata: Metadata = {
+    metadataBase: new URL(siteUrl),
     title: 'XploitRUM',
     description: 'Professional cybersecurity organization for learning and professional development',
     keywords: ['cybersecurity', 'security', 'education', 'student organization', 'UPRM'],
@@ -46,10 +49,11 @@ export const metadata: Metadata = {
         description: 'Professional cybersecurity organization for learning and professional development',
         images: ['/XPLOIT LOGOTIPO WHITE.png'],
     },
-    viewport: {
-        width: 'device-width',
-        initialScale: 1,
-    },
+}
+
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
 }
 
 export default function RootLayout({

@@ -66,6 +66,19 @@ class EventService:
             db.commit()
         return event
     
+    def get_event_by_slug(self, db: Session, slug: str) -> Optional[Event]:
+        """Get event by slug (generated from title)"""
+        from app.utils.slug import slugify
+        
+        # Try to find event by matching slugified title
+        events = db.query(Event).filter(Event.is_public == True).all()
+        for event in events:
+            if slugify(event.title) == slug:
+                event.update_status()
+                db.commit()
+                return event
+        return None
+    
     def create_event(self, db: Session, user: User, event_data: Dict[str, Any]) -> Event:
         """Create a new event"""
         # Validate dates

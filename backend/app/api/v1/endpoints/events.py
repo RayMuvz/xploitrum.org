@@ -177,19 +177,47 @@ async def get_events(
         for event in events
     ]
 
-@router.get("/{event_id}", response_model=EventResponse)
+@router.get("/{event_identifier}", response_model=EventResponse)
 async def get_event(
-    event_id: int,
+    event_identifier: str,
     db: Session = Depends(get_db)
 ):
-    """Get specific event by ID"""
-    event = event_service.get_event_by_id(db, event_id)
+    """Get specific event by ID or slug"""
+    # Try to parse as integer first (backward compatibility)
+    if event_identifier.isdigit():
+        event = event_service.get_event_by_id(db, int(event_identifier))
+    else:
+        # Try to find by slug
+        event = event_service.get_event_by_slug(db, event_identifier)
+    
     if not event:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Event not found"
         )
-    return event
+    
+    # Return formatted response
+    return {
+        "id": event.id,
+        "title": event.title,
+        "description": event.description,
+        "event_type": event.event_type.value,
+        "status": event.status.value,
+        "start_date": event.start_date.isoformat() if event.start_date else None,
+        "end_date": event.end_date.isoformat() if event.end_date else None,
+        "location": event.location,
+        "is_virtual": event.is_virtual,
+        "meeting_link": event.meeting_link,
+        "max_participants": event.max_participants,
+        "registration_required": event.registration_required,
+        "registration_deadline": event.registration_deadline.isoformat() if event.registration_deadline else None,
+        "is_featured": event.is_featured,
+        "registered_count": event.registered_count,
+        "is_registration_open": event.is_registration_open,
+        "is_full": event.is_full,
+        "created_by": event.created_by,
+        "created_at": event.created_at.isoformat() if event.created_at else None
+    }
 
 @router.post("")
 async def create_event(
