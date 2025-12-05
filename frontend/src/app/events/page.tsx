@@ -256,16 +256,13 @@ export default function EventsPage() {
         return `${baseUrl}/events/${slug}`
     }
 
-    // Share event using native Web Share API with rich metadata
+    // Share event using native Web Share API - only title and link
     const shareEvent = async (event: Event) => {
         const eventUrl = getEventShareUrl(event)
-        const dateTime = `${formatDate(event.start_date)} at ${formatTime(event.start_date)} - ${formatTime(event.end_date)}`
-        const location = event.is_virtual ? (event.meeting_link || 'Virtual Event') : (event.location || 'Location TBA')
         
-        // Create share data with metadata for rich link previews
+        // Create share data with only title and URL (metadata will be pulled from the page)
         const shareData: ShareData = {
             title: event.title,
-            text: `${event.description.substring(0, 200)}${event.description.length > 200 ? '...' : ''}\n\n📅 ${dateTime}\n📍 ${location}`,
             url: eventUrl
         }
 

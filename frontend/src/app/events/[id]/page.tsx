@@ -61,19 +61,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         })
     }
 
-    const dateTime = `${formatDate(event.start_date)} at ${formatTime(event.start_date)} - ${formatTime(event.end_date)}`
-    const location = event.is_virtual ? (event.meeting_link || 'Virtual Event') : (event.location || 'Location TBA')
-    const description = `${event.description}\n\n📅 ${dateTime}\n📍 ${location}`
+    // Clean event description for metadata (remove markdown, emojis, extra whitespace)
+    const cleanDescription = event.description
+        .replace(/\n+/g, ' ') // Replace newlines with spaces
+        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+        .trim()
+        .substring(0, 160) // Limit to 160 characters for meta description
 
     return {
         metadataBase: new URL(baseUrl),
-        title: `${event.title} | XploitRUM Events`,
-        description: description.substring(0, 160),
+        title: `${event.title} | XploitRUM`,
+        description: cleanDescription,
         openGraph: {
             type: 'website',
             url: eventUrl,
             title: event.title,
-            description: description.substring(0, 200),
+            description: cleanDescription,
             siteName: 'XploitRUM',
             locale: 'en_US',
             images: [
@@ -88,7 +91,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         twitter: {
             card: 'summary_large_image',
             title: event.title,
-            description: description.substring(0, 200),
+            description: cleanDescription,
             images: ['/XPLOIT LOGOTIPO WHITE.png'],
         },
         alternates: {
