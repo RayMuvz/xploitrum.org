@@ -2,13 +2,11 @@
 const nextConfig = {
     output: 'standalone',
     images: {
-        domains: ['localhost', 'api.xploitrum.org'],
+        domains: ['localhost', 'api.xploitrum.org', 'shop.xploitrum.org'],
         unoptimized: true,
     },
     env: {
         NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
-        NEXT_PUBLIC_CTF_URL: process.env.NEXT_PUBLIC_CTF_URL || 'http://localhost:3001',
-        NEXT_PUBLIC_LAB_URL: process.env.NEXT_PUBLIC_LAB_URL || 'http://localhost:3002',
         NEXT_PUBLIC_SHOPIFY_STORE_URL: process.env.NEXT_PUBLIC_SHOPIFY_STORE_URL || '',
         NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN: process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN || '',
         NEXT_PUBLIC_SHOPIFY_COLLECTION_URL: process.env.NEXT_PUBLIC_SHOPIFY_COLLECTION_URL || '',

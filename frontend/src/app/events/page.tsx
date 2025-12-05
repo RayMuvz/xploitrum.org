@@ -323,7 +323,7 @@ export default function EventsPage() {
                                     </div>
 
                                     <div className="flex gap-2">
-                                        {event.registration_required ? (
+                                        {event.registration_required && (
                                             event.is_registration_open && !event.is_full ? (
                                                 <button
                                                     onClick={() => handleRegister(event)}
@@ -336,18 +336,11 @@ export default function EventsPage() {
                                                     {event.is_full ? 'Full' : 'Registration Closed'}
                                                 </button>
                                             )
-                                        ) : (
-                                            <button
-                                                onClick={() => handleRegister(event)}
-                                                className="flex-1 bg-gradient-to-r from-cyber-400 to-neon-green text-black px-4 py-2 rounded text-sm font-semibold hover:from-cyber-500 hover:to-neon-green/80 transition-all"
-                                            >
-                                                Join Event
-                                            </button>
                                         )}
 
                                         <button
                                             onClick={() => handleShowDetails(event)}
-                                            className="border border-cyber-400 text-cyber-400 px-4 py-2 rounded text-sm font-semibold hover:bg-cyber-400 hover:text-black transition-all"
+                                            className={`${event.registration_required ? '' : 'flex-1'} border border-cyber-400 text-cyber-400 px-4 py-2 rounded text-sm font-semibold hover:bg-cyber-400 hover:text-black transition-all`}
                                         >
                                             Details
                                         </button>

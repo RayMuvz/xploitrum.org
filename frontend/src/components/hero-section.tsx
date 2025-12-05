@@ -111,9 +111,9 @@ export function HeroSection() {
                             <div className="inline-flex items-center justify-center w-16 h-16 bg-cyber-500/20 rounded-full mb-4">
                                 <Code className="h-8 w-8 text-cyber-400" />
                             </div>
-                            <h3 className="text-lg font-semibold text-white mb-2">Real Challenges</h3>
+                            <h3 className="text-lg font-semibold text-white mb-2">Education</h3>
                             <p className="text-gray-400">
-                                Practice with real-world scenarios and cutting-edge techniques in our dedicated CTF machines.
+                                Learn from workshops, events, and hands-on experiences designed to develop your cybersecurity expertise.
                             </p>
                         </div>
 

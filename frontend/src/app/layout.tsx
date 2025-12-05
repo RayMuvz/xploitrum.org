@@ -1,17 +1,14 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Navbar } from '@/components/navbar'
 
-const inter = Inter({ subsets: ['latin'] })
-
 export const metadata: Metadata = {
     title: 'XploitRUM',
-    description: 'Professional cybersecurity organization and CTF platform for learning and competitions',
-    keywords: ['cybersecurity', 'CTF', 'capture the flag', 'hacking', 'security', 'education'],
+    description: 'Professional cybersecurity organization for learning and professional development',
+    keywords: ['cybersecurity', 'security', 'education', 'student organization', 'UPRM'],
     authors: [{ name: 'XploitRUM Team' }],
     creator: 'XploitRUM',
     publisher: 'XploitRUM',
@@ -32,7 +29,7 @@ export const metadata: Metadata = {
         locale: 'en_US',
         url: 'https://www.xploitrum.org',
         title: 'XploitRUM',
-        description: 'Professional cybersecurity organization and CTF platform for learning and competitions',
+        description: 'Professional cybersecurity organization for learning and professional development',
         siteName: 'XploitRUM',
         images: [
             {
@@ -46,7 +43,7 @@ export const metadata: Metadata = {
     twitter: {
         card: 'summary_large_image',
         title: 'XploitRUM',
-        description: 'Professional cybersecurity organization and CTF platform for learning and competitions',
+        description: 'Professional cybersecurity organization for learning and professional development',
         images: ['/XPLOIT LOGOTIPO WHITE.png'],
     },
     viewport: {
@@ -68,7 +65,7 @@ export default function RootLayout({
                 <link rel="apple-touch-icon" href="/XPLOIT LOGOTIPO WHITE.png" />
                 <meta name="theme-color" content="#22d3ee" />
             </head>
-            <body className={inter.className}>
+            <body className="font-sans">
                 <ThemeProvider
                     attribute="class"
                     defaultTheme="dark"

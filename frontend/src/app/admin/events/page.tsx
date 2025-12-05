@@ -581,19 +581,6 @@ export default function AdminEventsPage() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Max Participants
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={formData.max_participants}
-                                        onChange={(e) => setFormData({ ...formData, max_participants: e.target.value })}
-                                        className="w-full px-3 py-2 bg-background border border-gray-600 rounded text-white placeholder-gray-500"
-                                        placeholder="Leave empty for unlimited"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
                                         Start Date & Time
                                     </label>
                                     <input
@@ -642,7 +629,56 @@ export default function AdminEventsPage() {
                                     />
                                 </div>
 
-                                <div className="flex items-center gap-4">
+                                {/* Registration Settings Section */}
+                                <div className="md:col-span-2 cyber-border p-4 rounded-lg bg-card/30">
+                                    <label className="flex items-center mb-4">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.registration_required}
+                                            onChange={(e) => setFormData({ ...formData, registration_required: e.target.checked })}
+                                            className="mr-2 h-5 w-5"
+                                        />
+                                        <div>
+                                            <span className="text-white font-semibold">Require Registration</span>
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                {formData.registration_required 
+                                                    ? "Event requires registration - registration button will appear on event page"
+                                                    : "Event is open to everyone - no registration button will appear"}
+                                            </p>
+                                        </div>
+                                    </label>
+
+                                    {formData.registration_required && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                    Max Participants
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={formData.max_participants}
+                                                    onChange={(e) => setFormData({ ...formData, max_participants: e.target.value })}
+                                                    className="w-full px-3 py-2 bg-background border border-gray-600 rounded text-white placeholder-gray-500"
+                                                    placeholder="Leave empty for unlimited"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                    Registration Deadline
+                                                </label>
+                                                <input
+                                                    type="datetime-local"
+                                                    value={formData.registration_deadline}
+                                                    onChange={(e) => setFormData({ ...formData, registration_deadline: e.target.value })}
+                                                    className="w-full px-3 py-2 bg-background border border-gray-600 rounded text-white"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-4 md:col-span-2">
                                     <label className="flex items-center">
                                         <input
                                             type="checkbox"
@@ -651,16 +687,6 @@ export default function AdminEventsPage() {
                                             className="mr-2"
                                         />
                                         <span className="text-gray-300">Virtual Event</span>
-                                    </label>
-
-                                    <label className="flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.registration_required}
-                                            onChange={(e) => setFormData({ ...formData, registration_required: e.target.checked })}
-                                            className="mr-2"
-                                        />
-                                        <span className="text-gray-300">Registration Required</span>
                                     </label>
 
                                     <label className="flex items-center">

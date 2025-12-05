@@ -307,19 +307,18 @@ export default function MerchPage() {
                                         </code>
                                     </div>
                                     <div className="cyber-border rounded-lg p-4">
-                                        <p className="text-cyber-400 font-semibold mb-2">Shopify Collection URL (optional)</p>
+                                        <p className="text-cyber-400 font-semibold mb-2">Shopify Collection ID (optional)</p>
                                         <code className="text-xs text-gray-300 block">
-                                            NEXT_PUBLIC_SHOPIFY_COLLECTION_URL=https://yourstore.myshopify.com/collections/xploitrum
+                                            NEXT_PUBLIC_SHOPIFY_COLLECTION_ID=your_collection_id
                                         </code>
                                     </div>
                                 </div>
                                 <div className="mt-6 p-4 bg-cyber-900/30 rounded-lg">
                                     <p className="text-sm text-cyber-400 font-semibold mb-2">📚 Documentation:</p>
                                     <ul className="text-sm text-gray-300 space-y-1 ml-4">
+                                        <li>• See <code className="text-cyber-400">SHOPIFY_SETUP.md</code> for detailed setup instructions</li>
                                         <li>• Create a Shopify store at <a href="https://www.shopify.com" target="_blank" rel="noopener noreferrer" className="text-cyber-400 hover:underline">shopify.com</a></li>
-                                        <li>• Add products to your store</li>
                                         <li>• Get your Storefront Access Token from Shopify Admin → Settings → Apps and sales channels → Develop apps</li>
-                                        <li>• Copy the store URL and collection URL if you want to embed a specific collection</li>
                                     </ul>
                                 </div>
                             </div>
@@ -350,4 +349,3 @@ export default function MerchPage() {
         </div>
     )
 }
-

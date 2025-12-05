@@ -121,7 +121,7 @@ module.exports = {
             },
             fontFamily: {
                 mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace'],
-                sans: ['Inter', 'system-ui', 'sans-serif'],
+                sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
             },
             backgroundImage: {
                 'cyber-grid': 'linear-gradient(rgba(0, 245, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 245, 255, 0.1) 1px, transparent 1px)',

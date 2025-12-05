@@ -91,21 +91,9 @@ export function AboutSection() {
                             </div>
                             <div>
                                 <div className="text-3xl font-bold text-neon-green mb-2">
-                                    {isLoading ? '...' : `${stats.total_challenges || 0}+`}
-                                </div>
-                                <div className="text-gray-400">CTF Challenges</div>
-                            </div>
-                            <div>
-                                <div className="text-3xl font-bold text-cyber-400 mb-2">
                                     {isLoading ? '...' : stats.total_events || 0}
                                 </div>
                                 <div className="text-gray-400">Events Hosted</div>
-                            </div>
-                            <div>
-                                <div className="text-3xl font-bold text-neon-green mb-2">
-                                    {isLoading ? '...' : stats.total_flags || 0}
-                                </div>
-                                <div className="text-gray-400">Flags Captured</div>
                             </div>
                         </div>
                     </motion.div>

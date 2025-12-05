@@ -2,27 +2,17 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { User, Mail, Calendar, Trophy, Target, Shield, Edit2, Save, X, Lock } from 'lucide-react'
+import { User, Mail, Calendar, Shield, Edit2, Save, X, Lock } from 'lucide-react'
 import { ProtectedRoute } from '@/contexts/AuthContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import axios from 'axios'
 
-interface UserStats {
-    total_score: number
-    total_solves: number
-    total_attempts: number
-    rank: number
-    solve_rate: number
-}
-
 export default function ProfilePage() {
     const { user, updateProfile, isAuthenticated } = useAuth()
     const { toast } = useToast()
-    const [stats, setStats] = useState<UserStats | null>(null)
     const [isEditing, setIsEditing] = useState(false)
-    const [isLoading, setIsLoading] = useState(true)
     const [editedName, setEditedName] = useState(user?.full_name || '')
     const [editedEmail, setEditedEmail] = useState(user?.email || '')
 
@@ -30,22 +20,8 @@ export default function ProfilePage() {
         if (user) {
             setEditedName(user.full_name || '')
             setEditedEmail(user.email || '')
-            fetchUserStats()
         }
     }, [user])
-
-    const fetchUserStats = async () => {
-        try {
-            const response = await axios.get('/api/v1/ctf/stats')
-            if (response.data) {
-                setStats(response.data)
-            }
-        } catch (error) {
-            console.error('Failed to fetch stats:', error)
-        } finally {
-            setIsLoading(false)
-        }
-    }
 
     const handleSave = async () => {
         try {
@@ -89,16 +65,6 @@ export default function ProfilePage() {
         setEditedName(user?.full_name || '')
         setEditedEmail(user?.email || '')
         setIsEditing(false)
-    }
-
-    if (isLoading) {
-        return (
-            <ProtectedRoute>
-                <div className="min-h-screen flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-cyber-400"></div>
-                </div>
-            </ProtectedRoute>
-        )
     }
 
     return (
@@ -214,62 +180,6 @@ export default function ProfilePage() {
                         </div>
                     </motion.div>
 
-                    {/* Statistics Grid */}
-                    {stats && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.6, delay: 0.3 }}
-                                className="cyber-border p-6 rounded-lg bg-card/30"
-                            >
-                                <div className="flex items-center justify-between mb-4">
-                                    <Trophy className="h-8 w-8 text-cyber-400" />
-                                    <span className="text-3xl font-bold text-white">{stats.total_score || 0}</span>
-                                </div>
-                                <p className="text-gray-400 font-medium">Total Score</p>
-                            </motion.div>
-
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.6, delay: 0.4 }}
-                                className="cyber-border p-6 rounded-lg bg-card/30"
-                            >
-                                <div className="flex items-center justify-between mb-4">
-                                    <Target className="h-8 w-8 text-cyber-400" />
-                                    <span className="text-3xl font-bold text-white">{stats.total_solves || 0}</span>
-                                </div>
-                                <p className="text-gray-400 font-medium">Challenges Solved</p>
-                            </motion.div>
-
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.6, delay: 0.5 }}
-                                className="cyber-border p-6 rounded-lg bg-card/30"
-                            >
-                                <div className="flex items-center justify-between mb-4">
-                                    <Target className="h-8 w-8 text-cyber-400" />
-                                    <span className="text-3xl font-bold text-white">#{stats.rank || 0}</span>
-                                </div>
-                                <p className="text-gray-400 font-medium">Rank</p>
-                            </motion.div>
-
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.6, delay: 0.6 }}
-                                className="cyber-border p-6 rounded-lg bg-card/30"
-                            >
-                                <div className="flex items-center justify-between mb-4">
-                                    <Target className="h-8 w-8 text-cyber-400" />
-                                    <span className="text-3xl font-bold text-white">{Math.round(stats.solve_rate || 0)}%</span>
-                                </div>
-                                <p className="text-gray-400 font-medium">Success Rate</p>
-                            </motion.div>
-                        </div>
-                    )}
 
                     {/* Change Password Section */}
                     <motion.div

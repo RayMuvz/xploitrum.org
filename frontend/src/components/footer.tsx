@@ -29,9 +29,9 @@ export function Footer() {
                     <div>
                         <h4 className="text-white font-semibold mb-4">Resources</h4>
                         <ul className="space-y-2">
-                            <li><a href="/lab" className="text-gray-400 hover:text-cyber-400 transition-colors">Lab</a></li>
-                            <li><a href="/leaderboard" className="text-gray-400 hover:text-cyber-400 transition-colors">Leaderboard</a></li>
                             <li><a href="/docs" className="text-gray-400 hover:text-cyber-400 transition-colors">Documentation</a></li>
+                            <li><a href="/events" className="text-gray-400 hover:text-cyber-400 transition-colors">Events</a></li>
+                            <li><a href="/merch" className="text-gray-400 hover:text-cyber-400 transition-colors">Merchandise</a></li>
                         </ul>
                     </div>
 
@@ -40,8 +40,6 @@ export function Footer() {
                         <ul className="space-y-2">
                             <li><a href="/about" className="text-gray-400 hover:text-cyber-400 transition-colors">About Us</a></li>
                             <li><a href="/team" className="text-gray-400 hover:text-cyber-400 transition-colors">Team</a></li>
-                            <li><a href="/events" className="text-gray-400 hover:text-cyber-400 transition-colors">Events</a></li>
-                            <li><a href="/merch" className="text-gray-400 hover:text-cyber-400 transition-colors">Merchandise</a></li>
                             <li><a href="/sponsors" className="text-gray-400 hover:text-cyber-400 transition-colors">Sponsors</a></li>
                         </ul>
                     </div>

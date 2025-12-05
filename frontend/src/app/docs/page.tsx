@@ -11,30 +11,10 @@ export default function DocsPage() {
             title: 'Getting Started',
             icon: BookOpen,
             items: [
-                { name: 'Quick Start Guide', href: '#quick-start' },
+                { name: 'About XploitRUM', href: '#about' },
                 { name: 'Registration & Setup', href: '#registration' },
-                { name: 'Your First Challenge', href: '#first-challenge' },
-                { name: 'CTF Platform Overview', href: '#platform-overview' },
-            ]
-        },
-        {
-            title: 'CTF Platform',
-            icon: Terminal,
-            items: [
-                { name: 'Deploying Instances', href: '#deploying' },
-                { name: 'OpenVPN Connection', href: '#openvpn' },
-                { name: 'Submitting Flags', href: '#flags' },
-                { name: 'Scoring System', href: '#scoring' },
-            ]
-        },
-        {
-            title: 'Lab Environment',
-            icon: Server,
-            items: [
-                { name: 'Lab Setup', href: '#lab-setup' },
-                { name: 'Network Configuration', href: '#network' },
-                { name: 'Tools & Resources', href: '#tools' },
-                { name: 'Best Practices', href: '#best-practices' },
+                { name: 'Joining Events', href: '#events' },
+                { name: 'Organization Overview', href: '#overview' },
             ]
         },
         {

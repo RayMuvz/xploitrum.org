@@ -56,18 +56,16 @@ export function StatsSection() {
     const displayStats = [
         { label: 'Active Members', value: customCount || stats.total_members },
         { label: 'Upcoming Events', value: stats.total_events },
-        { label: 'Active Challenges', value: stats.total_challenges || 0 },
-        { label: 'Flags Captured', value: stats.total_flags || 0 },
     ]
 
     return (
         <section className="py-16 bg-card/50">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 justify-items-center">
+                <div className="flex flex-wrap justify-center items-center gap-8 lg:gap-16">
                     {displayStats.map((stat, index) => (
                         <motion.div
                             key={index}
-                            className="text-center w-full"
+                            className="text-center"
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
