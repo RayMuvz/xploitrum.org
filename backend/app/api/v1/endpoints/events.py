@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.services.event_service import event_service
@@ -125,7 +125,7 @@ async def get_events(
         
         if upcoming_only:
             # Get events that haven't started yet OR are currently active
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             events = db.query(Event).filter(
                 Event.is_public == True,
                 Event.start_date > now
@@ -273,7 +273,29 @@ async def update_event(
     """Update an event"""
     try:
         event = event_service.update_event(db, current_user, event_id, event_data.dict(exclude_unset=True))
-        return event
+        
+        # Convert datetime fields to ISO strings (same format as POST and GET endpoints)
+        return {
+            "id": event.id,
+            "title": event.title,
+            "description": event.description,
+            "event_type": event.event_type.value,
+            "status": event.status.value,
+            "start_date": event.start_date.isoformat() if event.start_date else None,
+            "end_date": event.end_date.isoformat() if event.end_date else None,
+            "location": event.location,
+            "is_virtual": event.is_virtual,
+            "meeting_link": event.meeting_link,
+            "max_participants": event.max_participants,
+            "registration_required": event.registration_required,
+            "registration_deadline": event.registration_deadline.isoformat() if event.registration_deadline else None,
+            "is_featured": event.is_featured,
+            "registered_count": event.registered_count,
+            "is_registration_open": event.is_registration_open,
+            "is_full": event.is_full,
+            "created_by": event.created_by,
+            "created_at": event.created_at.isoformat() if event.created_at else None
+        }
     except Exception as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

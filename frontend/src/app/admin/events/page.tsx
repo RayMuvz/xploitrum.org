@@ -142,6 +142,15 @@ export default function AdminEventsPage() {
 
     const handleCreateEvent = async () => {
         try {
+            // Convert datetime-local format to ISO string with timezone
+            const prepareDateForServer = (dateString: string) => {
+                if (!dateString) return null
+                // datetime-local gives "YYYY-MM-DDTHH:mm" format (no timezone)
+                // We need to treat it as local time and convert to UTC
+                const localDate = new Date(dateString)
+                return localDate.toISOString()
+            }
+
             const response = await fetch('/api/events', {
                 method: 'POST',
                 headers: {
@@ -150,8 +159,10 @@ export default function AdminEventsPage() {
                 },
                 body: JSON.stringify({
                     ...formData,
+                    start_date: prepareDateForServer(formData.start_date),
+                    end_date: prepareDateForServer(formData.end_date),
                     max_participants: formData.max_participants ? parseInt(formData.max_participants) : null,
-                    registration_deadline: formData.registration_deadline || null
+                    registration_deadline: formData.registration_deadline ? prepareDateForServer(formData.registration_deadline) : null
                 })
             })
 
@@ -184,6 +195,15 @@ export default function AdminEventsPage() {
         if (!editingEvent) return
 
         try {
+            // Convert datetime-local format to ISO string with timezone
+            const prepareDateForServer = (dateString: string) => {
+                if (!dateString) return null
+                // datetime-local gives "YYYY-MM-DDTHH:mm" format (no timezone)
+                // We need to treat it as local time and convert to UTC
+                const localDate = new Date(dateString)
+                return localDate.toISOString()
+            }
+
             const response = await fetch(`/api/events/${editingEvent.id}`, {
                 method: 'PUT',
                 headers: {
@@ -192,8 +212,10 @@ export default function AdminEventsPage() {
                 },
                 body: JSON.stringify({
                     ...formData,
+                    start_date: prepareDateForServer(formData.start_date),
+                    end_date: prepareDateForServer(formData.end_date),
                     max_participants: formData.max_participants ? parseInt(formData.max_participants) : null,
-                    registration_deadline: formData.registration_deadline || null
+                    registration_deadline: formData.registration_deadline ? prepareDateForServer(formData.registration_deadline) : null
                 })
             })
 
@@ -206,17 +228,19 @@ export default function AdminEventsPage() {
                 resetForm()
                 fetchEvents()
             } else {
-                const error = await response.json()
+                const error = await response.json().catch(() => ({ error: 'Failed to update event' }))
+                console.error('Update error:', error)
                 toast({
                     title: "Update Failed",
-                    description: error.detail || "Failed to update event",
+                    description: error.detail || error.error || "Failed to update event",
                     variant: "destructive",
                 })
             }
-        } catch (error) {
+        } catch (error: any) {
+            console.error('Update error:', error)
             toast({
                 title: "Update Failed",
-                description: "Network error occurred",
+                description: error.message || "Network error occurred",
                 variant: "destructive",
             })
         }
@@ -339,18 +363,31 @@ export default function AdminEventsPage() {
 
     const startEdit = (event: Event) => {
         setEditingEvent(event)
+        
+        // Convert UTC dates to local time for datetime-local input
+        const formatDateForInput = (dateString: string) => {
+            const date = new Date(dateString)
+            // Get local time components
+            const year = date.getFullYear()
+            const month = String(date.getMonth() + 1).padStart(2, '0')
+            const day = String(date.getDate()).padStart(2, '0')
+            const hours = String(date.getHours()).padStart(2, '0')
+            const minutes = String(date.getMinutes()).padStart(2, '0')
+            return `${year}-${month}-${day}T${hours}:${minutes}`
+        }
+        
         setFormData({
             title: event.title,
             description: event.description,
             event_type: event.event_type,
-            start_date: new Date(event.start_date).toISOString().slice(0, 16),
-            end_date: new Date(event.end_date).toISOString().slice(0, 16),
+            start_date: formatDateForInput(event.start_date),
+            end_date: formatDateForInput(event.end_date),
             location: event.location || '',
             is_virtual: event.is_virtual,
             meeting_link: event.meeting_link || '',
             max_participants: event.max_participants?.toString() || '',
             registration_required: event.registration_required,
-            registration_deadline: event.registration_deadline ? new Date(event.registration_deadline).toISOString().slice(0, 16) : '',
+            registration_deadline: event.registration_deadline ? formatDateForInput(event.registration_deadline) : '',
             is_featured: event.is_featured
         })
     }

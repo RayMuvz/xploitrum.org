@@ -205,7 +205,9 @@ export default function EventsPage() {
     }
 
     const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
+        // Parse the date string - if it's UTC, convert to local time for display
+        const date = new Date(dateString)
+        return date.toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
@@ -214,9 +216,12 @@ export default function EventsPage() {
     }
 
     const formatTime = (dateString: string) => {
-        return new Date(dateString).toLocaleTimeString('en-US', {
+        // Parse the date string - if it's UTC, convert to local time for display
+        const date = new Date(dateString)
+        return date.toLocaleTimeString('en-US', {
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            hour12: true // Use 12-hour format with AM/PM
         })
     }
 

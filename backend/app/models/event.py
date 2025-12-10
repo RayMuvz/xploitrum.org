@@ -6,7 +6,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Enum, F
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import Base
 
@@ -86,25 +86,28 @@ class Event(Base):
     @property
     def is_upcoming(self):
         """Check if event is upcoming"""
-        return datetime.utcnow() < self.start_date
+        now = datetime.now(timezone.utc)
+        return now < self.start_date
     
     @property
     def is_active(self):
         """Check if event is currently active"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return self.start_date <= now <= self.end_date
     
     @property
     def is_past(self):
         """Check if event has ended"""
-        return datetime.utcnow() > self.end_date
+        now = datetime.now(timezone.utc)
+        return now > self.end_date
     
     @property
     def is_registration_open(self):
         """Check if registration is still open"""
         if not self.registration_required or not self.registration_deadline:
             return True
-        return datetime.utcnow() < self.registration_deadline
+        now = datetime.now(timezone.utc)
+        return now < self.registration_deadline
     
     @property
     def is_full(self):
@@ -115,7 +118,7 @@ class Event(Base):
     
     def update_status(self):
         """Update event status based on current time"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         if self.status == EventStatus.CANCELLED:
             return

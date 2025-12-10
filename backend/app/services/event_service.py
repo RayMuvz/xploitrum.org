@@ -2,7 +2,7 @@
 XploitRUM CTF Platform - Event Service
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc, asc
@@ -17,7 +17,7 @@ class EventService:
     
     def get_upcoming_events(self, db: Session, limit: int = 10) -> List[Event]:
         """Get upcoming events - simplified to avoid 500 errors"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         events = db.query(Event).filter(
             Event.is_public == True,
             Event.start_date > now
@@ -27,7 +27,7 @@ class EventService:
     
     def get_past_events(self, db: Session, limit: int = 10) -> List[Event]:
         """Get past events"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         events = db.query(Event).filter(
             Event.is_public == True,
             Event.status == EventStatus.COMPLETED,
@@ -38,7 +38,7 @@ class EventService:
     
     def get_active_events(self, db: Session) -> List[Event]:
         """Get currently active events - simplified to avoid 500 errors"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         events = db.query(Event).filter(
             Event.is_public == True,
             Event.start_date <= now,
@@ -49,7 +49,7 @@ class EventService:
     
     def get_all_active_events(self, db: Session) -> List[Event]:
         """Get all events that are currently active (started but not finished)"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         events = db.query(Event).filter(
             Event.is_public == True,
             Event.start_date <= now,
@@ -81,9 +81,20 @@ class EventService:
     
     def create_event(self, db: Session, user: User, event_data: Dict[str, Any]) -> Event:
         """Create a new event"""
-        # Validate dates
-        start_date = datetime.fromisoformat(event_data["start_date"].replace('Z', '+00:00'))
-        end_date = datetime.fromisoformat(event_data["end_date"].replace('Z', '+00:00'))
+        # Validate dates - ensure they are timezone-aware and in UTC
+        start_date_str = event_data["start_date"].replace('Z', '+00:00') if 'Z' in event_data["start_date"] else event_data["start_date"]
+        start_date = datetime.fromisoformat(start_date_str)
+        if start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=timezone.utc)
+        else:
+            start_date = start_date.astimezone(timezone.utc)
+        
+        end_date_str = event_data["end_date"].replace('Z', '+00:00') if 'Z' in event_data["end_date"] else event_data["end_date"]
+        end_date = datetime.fromisoformat(end_date_str)
+        if end_date.tzinfo is None:
+            end_date = end_date.replace(tzinfo=timezone.utc)
+        else:
+            end_date = end_date.astimezone(timezone.utc)
         
         if start_date >= end_date:
             raise HTTPException(
@@ -91,11 +102,21 @@ class EventService:
                 detail="End date must be after start date"
             )
         
-        if start_date < datetime.utcnow():
+        if start_date < datetime.now(timezone.utc):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Start date cannot be in the past"
             )
+        
+        # Parse registration_deadline if provided
+        registration_deadline = None
+        if event_data.get("registration_deadline"):
+            reg_deadline_str = event_data["registration_deadline"].replace('Z', '+00:00') if 'Z' in event_data["registration_deadline"] else event_data["registration_deadline"]
+            registration_deadline = datetime.fromisoformat(reg_deadline_str)
+            if registration_deadline.tzinfo is None:
+                registration_deadline = registration_deadline.replace(tzinfo=timezone.utc)
+            else:
+                registration_deadline = registration_deadline.astimezone(timezone.utc)
         
         # Create event
         event = Event(
@@ -109,7 +130,7 @@ class EventService:
             meeting_link=event_data.get("meeting_link"),
             max_participants=event_data.get("max_participants"),
             registration_required=event_data.get("registration_required", False),
-            registration_deadline=datetime.fromisoformat(event_data["registration_deadline"].replace('Z', '+00:00')) if event_data.get("registration_deadline") else None,
+            registration_deadline=registration_deadline,
             is_featured=event_data.get("is_featured", False),
             is_public=True,  # Explicitly set events as public by default
             agenda=event_data.get("agenda"),
@@ -158,7 +179,35 @@ class EventService:
         for field in allowed_fields:
             if field in event_data:
                 if field in ["start_date", "end_date", "registration_deadline"] and event_data[field]:
-                    setattr(event, field, datetime.fromisoformat(event_data[field].replace('Z', '+00:00')))
+                    # Handle date strings that may or may not have timezone info
+                    date_str = str(event_data[field])
+                    try:
+                        # Try parsing as-is first (handles full ISO strings with timezone)
+                        if 'Z' in date_str:
+                            # Replace Z with +00:00 for fromisoformat
+                            date_str = date_str.replace('Z', '+00:00')
+                        elif '+' not in date_str and '-' not in date_str[-6:]:
+                            # No timezone indicator - assume UTC
+                            if date_str.count(':') >= 1:
+                                # Has time component, append Z
+                                date_str = date_str + 'Z'
+                            else:
+                                # Just date, append time and Z
+                                date_str = date_str + 'T00:00:00Z'
+                            date_str = date_str.replace('Z', '+00:00')
+                        parsed_date = datetime.fromisoformat(date_str)
+                        # Ensure the datetime is timezone-aware and in UTC
+                        if parsed_date.tzinfo is None:
+                            parsed_date = parsed_date.replace(tzinfo=timezone.utc)
+                        else:
+                            # Convert to UTC if it has a different timezone
+                            parsed_date = parsed_date.astimezone(timezone.utc)
+                        setattr(event, field, parsed_date)
+                    except (ValueError, AttributeError) as e:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Invalid date format for {field}: {str(e)}"
+                        )
                 elif field == "event_type":
                     setattr(event, field, EventType(event_data[field]))
                 elif field == "status":
@@ -292,7 +341,7 @@ class EventService:
     
     def get_event_statistics(self, db: Session) -> Dict[str, Any]:
         """Get event statistics"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         total_events = db.query(Event).count()
         upcoming_events = db.query(Event).filter(
