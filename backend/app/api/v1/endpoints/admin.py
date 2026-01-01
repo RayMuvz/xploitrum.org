@@ -558,6 +558,8 @@ def get_registration_setting(
         )
 
 
+
+
 @router.put("/settings/registration", response_model=RegistrationSetting)
 def update_registration_setting(
     setting_data: RegistrationSetting,

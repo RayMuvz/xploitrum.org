@@ -31,8 +31,9 @@ export default function RegisterPage() {
 
     const checkRegistrationStatus = async () => {
         try {
-            // Try to fetch from backend API first
-            const response = await fetch('/api/v1/admin/settings/registration')
+            // Try to fetch from backend API first (public endpoint)
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+            const response = await fetch(`${apiUrl}/api/v1/stats/registration-status`)
             if (response.ok) {
                 const data = await response.json()
                 setIsLocked(!data.enabled)
@@ -42,6 +43,7 @@ export default function RegisterPage() {
                 setIsLocked(registrationStatus !== 'true')
             }
         } catch (error) {
+            console.error('Error checking registration status:', error)
             // Fallback to localStorage
             const registrationStatus = localStorage.getItem('xploitrum_registration_open')
             setIsLocked(registrationStatus !== 'true')

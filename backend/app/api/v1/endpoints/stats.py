@@ -16,6 +16,44 @@ from app.models.instance import Instance, InstanceStatus
 
 router = APIRouter()
 
+
+class RegistrationSetting(BaseModel):
+    enabled: bool
+
+
+def _get_settings_path():
+    """Get the path to settings.json file"""
+    from pathlib import Path
+    # Path from backend/app/api/v1/endpoints/stats.py to backend/settings.json
+    return Path(__file__).parent.parent.parent.parent.parent / "settings.json"
+
+
+def _read_registration_setting() -> bool:
+    """Read registration setting from settings.json"""
+    import json
+    settings_path = _get_settings_path()
+    
+    if settings_path.exists():
+        try:
+            with open(settings_path, 'r') as f:
+                settings = json.load(f)
+            return settings.get("registration_enabled", True)
+        except (json.JSONDecodeError, IOError):
+            return True  # Default to enabled if file is corrupted
+    else:
+        return True  # Default to enabled if file doesn't exist
+
+
+@router.get("/registration-status", response_model=RegistrationSetting)
+def get_registration_status():
+    """Get registration status (public endpoint, no auth required)"""
+    try:
+        enabled = _read_registration_setting()
+        return RegistrationSetting(enabled=enabled)
+    except Exception as e:
+        # Default to enabled if there's an error reading the setting
+        return RegistrationSetting(enabled=True)
+
 @router.get("/platform")
 def get_platform_stats(db: Session = Depends(get_db)):
     """Get real-time platform statistics"""
