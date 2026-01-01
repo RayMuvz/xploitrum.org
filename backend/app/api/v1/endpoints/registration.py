@@ -23,12 +23,37 @@ class StudentRegistration(BaseModel):
     studentNumber: str
     phoneNumber: str
 
+def _read_registration_setting() -> bool:
+    """Read registration setting from settings.json"""
+    import json
+    from pathlib import Path
+    # Path from backend/app/api/v1/endpoints/registration.py to backend/settings.json
+    settings_path = Path(__file__).parent.parent.parent.parent.parent / "settings.json"
+    
+    if settings_path.exists():
+        try:
+            with open(settings_path, 'r') as f:
+                settings = json.load(f)
+            return settings.get("registration_enabled", True)
+        except (json.JSONDecodeError, IOError):
+            return True  # Default to enabled if file is corrupted
+    else:
+        return True  # Default to enabled if file doesn't exist
+
+
 @router.post("/register")
 async def register_student(registration: StudentRegistration):
     """
     Handle student organization registration
     Sends email to admin with registration details and CSV attachment
     """
+    # Check if registration is enabled globally
+    if not _read_registration_setting():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Registration is currently closed. Please contact the administrator."
+        )
+    
     try:
         # Create CSV content
         csv_buffer = io.StringIO()
@@ -145,17 +170,36 @@ If you have any questions, please contact us at admin@xploitrum.org
         from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
         from app.core.config import settings
         
+        # Validate SMTP configuration
+        if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="SMTP credentials not configured. Please set SMTP_USERNAME and SMTP_PASSWORD environment variables."
+            )
+        
+        if not settings.SMTP_HOST:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="SMTP server not configured. Please set SMTP_HOST environment variable."
+            )
+        
+        # Determine if we should use SSL or STARTTLS based on port
+        # Port 465 typically uses SSL, port 587 uses STARTTLS
+        use_ssl = settings.SMTP_PORT == 465
+        use_starttls = settings.SMTP_PORT == 587 and settings.SMTP_TLS
+        
         # Configure email
         conf = ConnectionConfig(
-            MAIL_USERNAME=settings.SMTP_USERNAME or "noreply@xploitrum.org",
-            MAIL_PASSWORD=settings.SMTP_PASSWORD or "",
+            MAIL_USERNAME=settings.SMTP_USERNAME,
+            MAIL_PASSWORD=settings.SMTP_PASSWORD,
             MAIL_FROM=settings.FROM_EMAIL,
             MAIL_PORT=settings.SMTP_PORT,
-            MAIL_SERVER=settings.SMTP_HOST or "smtp.gmail.com",
-            MAIL_STARTTLS=settings.SMTP_TLS,
-            MAIL_SSL_TLS=False,
-            USE_CREDENTIALS=bool(settings.SMTP_USERNAME and settings.SMTP_PASSWORD),
-            VALIDATE_CERTS=True
+            MAIL_SERVER=settings.SMTP_HOST,
+            MAIL_STARTTLS=use_starttls,
+            MAIL_SSL_TLS=use_ssl,
+            USE_CREDENTIALS=True,
+            VALIDATE_CERTS=True,
+            TIMEOUT=10  # 10 second timeout
         )
         
         # Create admin message
@@ -175,30 +219,35 @@ If you have any questions, please contact us at admin@xploitrum.org
             subtype="plain"
         )
         
-        # Try to send email
-        email_sent = False
-        email_configured = bool(settings.SMTP_USERNAME and settings.SMTP_PASSWORD)
-        
+        # Send email - this is required, registration will fail if email doesn't work
         try:
-            if email_configured:
-                fm = FastMail(conf)
-                
-                # Send admin notification
-                await fm.send_message(admin_message)
-                print(f"✅ Admin notification sent for {registration.firstName} {registration.lastName}")
-                
-                # Send student confirmation
-                await fm.send_message(student_message)
-                print(f"✅ Confirmation email sent to {email_value}")
-                
-                email_sent = True
-            else:
-                print("⚠️ Email credentials not configured, will save to file for development")
+            fm = FastMail(conf)
+            
+            # Send admin notification first
+            await fm.send_message(admin_message)
+            print(f"✅ Admin notification sent for {registration.firstName} {registration.lastName}")
+            
+            # Send student confirmation
+            await fm.send_message(student_message)
+            print(f"✅ Confirmation email sent to {email_value}")
+            
         except Exception as email_error:
-            print(f"⚠️ Failed to send email: {email_error}")
+            # Log detailed error information for debugging
+            error_msg = str(email_error)
+            print(f"❌ Failed to send email: {error_msg}")
+            print(f"   SMTP Server: {settings.SMTP_HOST}")
+            print(f"   SMTP Port: {settings.SMTP_PORT}")
+            print(f"   SMTP Username: {settings.SMTP_USERNAME}")
+            print(f"   Use SSL: {use_ssl}, Use STARTTLS: {use_starttls}")
             import traceback
             traceback.print_exc()
-            email_sent = False
+            
+            # Re-raise the exception so the registration fails if email doesn't work
+            # This ensures you get the registrations in your inbox
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to send registration email. Please check SMTP configuration. Error: {error_msg}"
+            )
         finally:
             # Clean up temp file
             try:
@@ -207,42 +256,12 @@ If you have any questions, please contact us at admin@xploitrum.org
             except:
                 pass
         
-        # Only save to file in development (when email is not configured) or if email failed
-        if not email_configured or not email_sent:
-            try:
-                from pathlib import Path
-                registrations_dir = Path("registrations")
-                registrations_dir.mkdir(exist_ok=True)
-                
-                filename = f"registration_{registration.firstName}_{registration.lastName}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-                filepath = registrations_dir / filename
-                
-                with open(filepath, 'w', newline='', encoding='utf-8') as f:
-                    f.write(csv_content)
-                
-                print(f"✅ Registration saved to file: {filepath}")
-                
-                # Also save a summary text file
-                summary_file = registrations_dir / filename.replace('.csv', '_summary.txt')
-                with open(summary_file, 'w', encoding='utf-8') as f:
-                    f.write(admin_email_body)
-                
-                print(f"✅ Registration summary saved to: {summary_file}")
-            except Exception as file_error:
-                print(f"⚠️ Failed to save registration to file: {file_error}")
-        
-        # If email is configured but failed, raise an error
-        if email_configured and not email_sent:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to send registration email. Please try again or contact support."
-            )
-        
+        # Email was sent successfully
         return {
             "success": True,
-            "message": "Registration submitted successfully" + (" - confirmation email sent to you and admin" if email_sent else " - saved for admin review"),
+            "message": "Registration submitted successfully - confirmation email sent to you and admin",
             "email": email_value,
-            "email_sent": email_sent
+            "email_sent": True
         }
         
     except HTTPException:

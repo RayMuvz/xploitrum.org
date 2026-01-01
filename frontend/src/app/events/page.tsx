@@ -64,7 +64,7 @@ export default function EventsPage() {
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search)
         const eventIdParam = urlParams.get('event')
-        
+
         if (eventIdParam) {
             const eventId = parseInt(eventIdParam, 10)
             if (!isNaN(eventId)) {
@@ -264,7 +264,7 @@ export default function EventsPage() {
     // Share event using native Web Share API - only title and link
     const shareEvent = async (event: Event) => {
         const eventUrl = getEventShareUrl(event)
-        
+
         // Create share data with only title and URL (metadata will be pulled from the page)
         const shareData: ShareData = {
             title: event.title,
@@ -612,7 +612,7 @@ export default function EventsPage() {
                                         Register Now
                                     </Button>
                                 )}
-                                
+
                                 {/* Share Button - Only for active events */}
                                 {isEventActive(selectedEvent) && (
                                     <Button

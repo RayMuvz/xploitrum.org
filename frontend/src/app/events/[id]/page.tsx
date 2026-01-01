@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const { slugify } = await import('@/lib/utils')
     const slug = slugify(event.title)
     const eventUrl = `${baseUrl}/events/${slug}`
-    
+
     const formatDate = (dateString: string) => {
         // Parse the date string - if it's UTC, convert to local time for display
         const date = new Date(dateString)

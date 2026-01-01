@@ -488,3 +488,88 @@ async def get_analytics_data(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get analytics data"
         )
+
+
+class RegistrationSetting(BaseModel):
+    enabled: bool
+
+
+def _get_settings_path():
+    """Get the path to settings.json file"""
+    from pathlib import Path
+    # Path from backend/app/api/v1/endpoints/admin.py to backend/settings.json
+    # __file__ = backend/app/api/v1/endpoints/admin.py
+    # We need to go up 5 levels: endpoints -> v1 -> api -> app -> backend -> settings.json
+    return Path(__file__).parent.parent.parent.parent.parent / "settings.json"
+
+
+def _read_registration_setting() -> bool:
+    """Read registration setting from settings.json"""
+    import json
+    settings_path = _get_settings_path()
+    
+    if settings_path.exists():
+        try:
+            with open(settings_path, 'r') as f:
+                settings = json.load(f)
+            return settings.get("registration_enabled", True)
+        except (json.JSONDecodeError, IOError):
+            return True  # Default to enabled if file is corrupted
+    else:
+        return True  # Default to enabled if file doesn't exist
+
+
+def _write_registration_setting(enabled: bool) -> None:
+    """Write registration setting to settings.json"""
+    import json
+    settings_path = _get_settings_path()
+    
+    # Read existing settings or create new dict
+    if settings_path.exists():
+        try:
+            with open(settings_path, 'r') as f:
+                settings = json.load(f)
+        except (json.JSONDecodeError, IOError):
+            settings = {}
+    else:
+        settings = {}
+    
+    # Update registration setting
+    settings["registration_enabled"] = enabled
+    
+    # Write back to file
+    with open(settings_path, 'w') as f:
+        json.dump(settings, f, indent=2)
+
+
+@router.get("/settings/registration", response_model=RegistrationSetting)
+def get_registration_setting(
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Get registration setting (admin only)"""
+    try:
+        enabled = _read_registration_setting()
+        return RegistrationSetting(enabled=enabled)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get registration setting: {str(e)}"
+        )
+
+
+@router.put("/settings/registration", response_model=RegistrationSetting)
+def update_registration_setting(
+    setting_data: RegistrationSetting,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Update registration setting (admin only)"""
+    try:
+        _write_registration_setting(setting_data.enabled)
+        return RegistrationSetting(enabled=setting_data.enabled)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update registration setting: {str(e)}"
+        )

@@ -56,16 +56,26 @@ export default function AdminDashboardPage() {
 
     const fetchRegistrationStatus = async () => {
         try {
-            const response = await fetch('/api/v1/admin/settings/registration')
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+            const authTokens = localStorage.getItem('auth_tokens')
+            const token = authTokens ? JSON.parse(authTokens).access_token : ''
+            
+            const response = await fetch(`${apiUrl}/api/v1/admin/settings/registration`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
             if (response.ok) {
                 const data = await response.json()
                 setRegistrationOpen(data.enabled)
             } else {
+                console.error('Failed to fetch registration status:', response.status)
                 // Fallback to localStorage
                 const status = localStorage.getItem('xploitrum_registration_open')
                 setRegistrationOpen(status === 'true')
             }
         } catch (error) {
+            console.error('Error fetching registration status:', error)
             // Fallback to localStorage
             const status = localStorage.getItem('xploitrum_registration_open')
             setRegistrationOpen(status === 'true')
@@ -75,10 +85,11 @@ export default function AdminDashboardPage() {
     const toggleRegistration = async () => {
         setIsUpdating(true)
         try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
             const authTokens = localStorage.getItem('auth_tokens')
             const token = authTokens ? JSON.parse(authTokens).access_token : ''
 
-            const response = await fetch('/api/v1/admin/settings/registration', {
+            const response = await fetch(`${apiUrl}/api/v1/admin/settings/registration`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -88,19 +99,19 @@ export default function AdminDashboardPage() {
             })
 
             if (response.ok) {
-                setRegistrationOpen(!registrationOpen)
+                const data = await response.json()
+                setRegistrationOpen(data.enabled)
                 // Also update localStorage as fallback
-                localStorage.setItem('xploitrum_registration_open', (!registrationOpen).toString())
+                localStorage.setItem('xploitrum_registration_open', data.enabled.toString())
             } else {
-                // Fallback to localStorage only
-                setRegistrationOpen(!registrationOpen)
-                localStorage.setItem('xploitrum_registration_open', (!registrationOpen).toString())
+                const errorData = await response.json().catch(() => ({ detail: 'Failed to update registration status' }))
+                console.error('Failed to update registration status:', errorData)
+                throw new Error(errorData.detail || 'Failed to update registration status')
             }
         } catch (error) {
-            console.error('Failed to update registration status:', error)
-            // Fallback to localStorage only
-            setRegistrationOpen(!registrationOpen)
-            localStorage.setItem('xploitrum_registration_open', (!registrationOpen).toString())
+            console.error('Error updating registration status:', error)
+            // Show error but don't update state on failure
+            alert('Failed to update registration status. Please try again.')
         } finally {
             setIsUpdating(false)
         }

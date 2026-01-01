@@ -62,20 +62,20 @@ export default function MerchPage() {
             }
 
             // Load Shopify Buy Button SDK
-            const script = document.createElement('script')
-            script.src = 'https://sdks.shopifycdn.com/buy-button/latest/buy-button-storefront.min.js'
-            script.async = true
+        const script = document.createElement('script')
+        script.src = 'https://sdks.shopifycdn.com/buy-button/latest/buy-button-storefront.min.js'
+        script.async = true
 
             script.onload = () => {
                 initShopify()
             }
 
-            document.body.appendChild(script)
+        document.body.appendChild(script)
 
             cleanup = () => {
                 if (document.body.contains(script)) {
-                    document.body.removeChild(script)
-                }
+            document.body.removeChild(script)
+        }
             }
         }
 
@@ -247,44 +247,44 @@ export default function MerchPage() {
                 ) : (
                     /* Fallback: Coming Soon Section */
                     <>
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, delay: 0.2 }}
-                            className="cyber-border rounded-lg p-12 mb-12 text-center"
-                        >
-                            <Package className="h-16 w-16 text-cyber-400 mx-auto mb-6" />
-                            <h2 className="text-3xl font-bold text-white mb-4">Coming Soon</h2>
-                            <p className="text-lg text-gray-400 mb-6 max-w-2xl mx-auto">
-                                We're setting up our official merchandise store with high-quality items featuring the XploitRUM brand.
-                            </p>
-                            <div className="flex flex-wrap justify-center gap-4 text-gray-400">
-                                <div className="cyber-border rounded-lg p-4 min-w-[150px]">
-                                    <p className="text-sm font-semibold text-cyber-400 mb-2">T-Shirts</p>
-                                    <p className="text-xs">High-quality cotton tees</p>
-                                </div>
-                                <div className="cyber-border rounded-lg p-4 min-w-[150px]">
-                                    <p className="text-sm font-semibold text-cyber-400 mb-2">Hoodies</p>
-                                    <p className="text-xs">Comfortable sweatshirts</p>
-                                </div>
-                                <div className="cyber-border rounded-lg p-4 min-w-[150px]">
-                                    <p className="text-sm font-semibold text-cyber-400 mb-2">Stickers</p>
-                                    <p className="text-xs">Custom vinyl stickers</p>
-                                </div>
-                                <div className="cyber-border rounded-lg p-4 min-w-[150px]">
-                                    <p className="text-sm font-semibold text-cyber-400 mb-2">Accessories</p>
-                                    <p className="text-xs">Mugs, bags & more</p>
-                                </div>
-                            </div>
-                        </motion.div>
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                    className="cyber-border rounded-lg p-12 mb-12 text-center"
+                >
+                    <Package className="h-16 w-16 text-cyber-400 mx-auto mb-6" />
+                    <h2 className="text-3xl font-bold text-white mb-4">Coming Soon</h2>
+                    <p className="text-lg text-gray-400 mb-6 max-w-2xl mx-auto">
+                        We're setting up our official merchandise store with high-quality items featuring the XploitRUM brand.
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-4 text-gray-400">
+                        <div className="cyber-border rounded-lg p-4 min-w-[150px]">
+                            <p className="text-sm font-semibold text-cyber-400 mb-2">T-Shirts</p>
+                            <p className="text-xs">High-quality cotton tees</p>
+                        </div>
+                        <div className="cyber-border rounded-lg p-4 min-w-[150px]">
+                            <p className="text-sm font-semibold text-cyber-400 mb-2">Hoodies</p>
+                            <p className="text-xs">Comfortable sweatshirts</p>
+                        </div>
+                        <div className="cyber-border rounded-lg p-4 min-w-[150px]">
+                            <p className="text-sm font-semibold text-cyber-400 mb-2">Stickers</p>
+                            <p className="text-xs">Custom vinyl stickers</p>
+                        </div>
+                        <div className="cyber-border rounded-lg p-4 min-w-[150px]">
+                            <p className="text-sm font-semibold text-cyber-400 mb-2">Accessories</p>
+                            <p className="text-xs">Mugs, bags & more</p>
+                        </div>
+                    </div>
+                </motion.div>
 
                         {/* Setup Instructions */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, delay: 0.4 }}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.4 }}
                             className="cyber-border rounded-lg p-8 bg-gradient-to-br from-cyber-900/50 to-background"
-                        >
+                >
                             <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
                                 <Package className="h-8 w-8 text-cyber-400" />
                                 Setup Required
@@ -292,25 +292,25 @@ export default function MerchPage() {
                             <div className="bg-gray-900 rounded-lg p-6 space-y-4">
                                 <p className="text-gray-300 mb-4">
                                     To enable the merchandise store, configure the following environment variables in your <code className="text-cyber-400 bg-cyber-900 px-2 py-1 rounded">frontend/.env.local</code> file:
-                                </p>
+                        </p>
                                 <div className="space-y-3">
                                     <div className="cyber-border rounded-lg p-4">
                                         <p className="text-cyber-400 font-semibold mb-2">Shopify Store URL</p>
                                         <code className="text-xs text-gray-300 block">
                                             NEXT_PUBLIC_SHOPIFY_STORE_URL=yourstore.myshopify.com
-                                        </code>
+                            </code>
                                     </div>
                                     <div className="cyber-border rounded-lg p-4">
                                         <p className="text-cyber-400 font-semibold mb-2">Shopify Storefront Access Token</p>
                                         <code className="text-xs text-gray-300 block">
                                             NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN=your_access_token
-                                        </code>
+                            </code>
                                     </div>
                                     <div className="cyber-border rounded-lg p-4">
                                         <p className="text-cyber-400 font-semibold mb-2">Shopify Collection ID (optional)</p>
                                         <code className="text-xs text-gray-300 block">
                                             NEXT_PUBLIC_SHOPIFY_COLLECTION_ID=your_collection_id
-                                        </code>
+                            </code>
                                     </div>
                                 </div>
                                 <div className="mt-6 p-4 bg-cyber-900/30 rounded-lg">
@@ -320,9 +320,9 @@ export default function MerchPage() {
                                         <li>• Create a Shopify store at <a href="https://www.shopify.com" target="_blank" rel="noopener noreferrer" className="text-cyber-400 hover:underline">shopify.com</a></li>
                                         <li>• Get your Storefront Access Token from Shopify Admin → Settings → Apps and sales channels → Develop apps</li>
                                     </ul>
-                                </div>
-                            </div>
-                        </motion.div>
+                        </div>
+                    </div>
+                </motion.div>
                     </>
                 )}
 

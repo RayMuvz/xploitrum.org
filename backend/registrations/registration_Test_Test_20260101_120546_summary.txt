@@ -1,0 +1,32 @@
+
+New Student Organization Registration Submitted
+
+Student Information:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Name: Test Test
+Email: test@upr.edu
+Phone: 787-242-6727
+Student Number: 666-66-6666
+
+Academic Information:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Year of Study: 5th+
+Major: ICOM
+
+Cybersecurity Background:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Current Level: Pro
+
+Why They Want to Join:
+Test
+
+What They're Looking Forward To:
+Test
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Submitted: January 01, 2026 at 12:05 PM
+
+A CSV file with this registration is attached.

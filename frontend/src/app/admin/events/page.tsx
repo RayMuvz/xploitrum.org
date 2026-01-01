@@ -363,7 +363,7 @@ export default function AdminEventsPage() {
 
     const startEdit = (event: Event) => {
         setEditingEvent(event)
-        
+
         // Convert UTC dates to local time for datetime-local input
         const formatDateForInput = (dateString: string) => {
             const date = new Date(dateString)
@@ -375,7 +375,7 @@ export default function AdminEventsPage() {
             const minutes = String(date.getMinutes()).padStart(2, '0')
             return `${year}-${month}-${day}T${hours}:${minutes}`
         }
-        
+
         setFormData({
             title: event.title,
             description: event.description,
@@ -678,7 +678,7 @@ export default function AdminEventsPage() {
                                         <div>
                                             <span className="text-white font-semibold">Require Registration</span>
                                             <p className="text-xs text-gray-400 mt-1">
-                                                {formData.registration_required 
+                                                {formData.registration_required
                                                     ? "Event requires registration - registration button will appear on event page"
                                                     : "Event is open to everyone - no registration button will appear"}
                                             </p>

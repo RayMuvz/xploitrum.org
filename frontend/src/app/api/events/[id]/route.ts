@@ -7,7 +7,7 @@ export async function GET(
     try {
         const eventId = params.id
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-        
+
         const response = await fetch(`${apiUrl}/api/v1/events/${encodeURIComponent(eventId)}`, {
             headers: {
                 'Accept': 'application/json',
@@ -39,13 +39,13 @@ export async function PUT(
     try {
         const eventId = params.id
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-        
+
         // Get the authorization header from the request
         const authHeader = request.headers.get('Authorization')
-        
+
         // Get the request body
         const body = await request.json()
-        
+
         const response = await fetch(`${apiUrl}/api/v1/events/${encodeURIComponent(eventId)}`, {
             method: 'PUT',
             headers: {
