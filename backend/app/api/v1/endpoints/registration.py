@@ -219,7 +219,8 @@ If you have any questions, please contact us at admin@xploitrum.org
             subtype="plain"
         )
         
-        # Send email - this is required, registration will fail if email doesn't work
+        # Try to send email, but fall back to saving to file if it fails
+        email_sent = False
         try:
             fm = FastMail(conf)
             
@@ -231,23 +232,19 @@ If you have any questions, please contact us at admin@xploitrum.org
             await fm.send_message(student_message)
             print(f"✅ Confirmation email sent to {email_value}")
             
+            email_sent = True
         except Exception as email_error:
             # Log detailed error information for debugging
             error_msg = str(email_error)
-            print(f"❌ Failed to send email: {error_msg}")
+            print(f"⚠️ Failed to send email: {error_msg}")
             print(f"   SMTP Server: {settings.SMTP_HOST}")
             print(f"   SMTP Port: {settings.SMTP_PORT}")
             print(f"   SMTP Username: {settings.SMTP_USERNAME}")
             print(f"   Use SSL: {use_ssl}, Use STARTTLS: {use_starttls}")
+            print(f"   Registration will be saved to file instead")
             import traceback
             traceback.print_exc()
-            
-            # Re-raise the exception so the registration fails if email doesn't work
-            # This ensures you get the registrations in your inbox
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to send registration email. Please check SMTP configuration. Error: {error_msg}"
-            )
+            email_sent = False
         finally:
             # Clean up temp file
             try:
@@ -256,12 +253,41 @@ If you have any questions, please contact us at admin@xploitrum.org
             except:
                 pass
         
-        # Email was sent successfully
+        # If email failed, save to file as backup
+        if not email_sent:
+            try:
+                from pathlib import Path
+                registrations_dir = Path("registrations")
+                registrations_dir.mkdir(exist_ok=True)
+                
+                filename = f"registration_{registration.firstName}_{registration.lastName}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                filepath = registrations_dir / filename
+                
+                with open(filepath, 'w', newline='', encoding='utf-8') as f:
+                    f.write(csv_content)
+                
+                print(f"✅ Registration saved to file: {filepath}")
+                
+                # Also save a summary text file
+                summary_file = registrations_dir / filename.replace('.csv', '_summary.txt')
+                with open(summary_file, 'w', encoding='utf-8') as f:
+                    f.write(admin_email_body)
+                
+                print(f"✅ Registration summary saved to: {summary_file}")
+            except Exception as file_error:
+                print(f"⚠️ Failed to save registration to file: {file_error}")
+                # If both email and file save fail, raise an error
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to send email and save registration. Please contact support."
+                )
+        
+        # Registration succeeded (either email sent or saved to file)
         return {
             "success": True,
-            "message": "Registration submitted successfully - confirmation email sent to you and admin",
+            "message": "Registration submitted successfully" + (" - confirmation email sent to you and admin" if email_sent else " - saved for admin review"),
             "email": email_value,
-            "email_sent": True
+            "email_sent": email_sent
         }
         
     except HTTPException:
