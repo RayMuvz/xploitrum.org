@@ -183,16 +183,48 @@ If you have any questions, please contact us at admin@xploitrum.org
                 detail="SMTP server not configured. Please set SMTP_HOST environment variable."
             )
         
-        # Determine if we should use SSL or STARTTLS
-        # If SMTP_SSL is explicitly set, use it; otherwise infer from port
-        # Port 465 typically uses SSL, port 587 uses STARTTLS
-        if hasattr(settings, 'SMTP_SSL') and settings.SMTP_SSL is not None:
-            use_ssl = settings.SMTP_SSL
-        else:
-            use_ssl = settings.SMTP_PORT == 465
+        # Determine SSL/TLS configuration
+        # Port 465 = SSL, Port 587/2525 = typically STARTTLS
+        # For AhaSend on port 2525: try STARTTLS first (most common), then SSL if explicitly set
+        smtp_ssl_setting = getattr(settings, 'SMTP_SSL', None)
         
-        # STARTTLS is used when TLS is enabled but SSL is not (and port is typically 587)
-        use_starttls = not use_ssl and settings.SMTP_TLS and settings.SMTP_PORT != 465
+        if settings.SMTP_PORT == 2525:
+            # Port 2525 typically uses STARTTLS, not SSL
+            # However, if SMTP_SSL=True is explicitly set, try SSL
+            # If SMTP_TLS=True, use STARTTLS
+            if settings.SMTP_TLS:
+                # TLS enabled = use STARTTLS
+                use_ssl = False
+                use_starttls = True
+            elif smtp_ssl_setting is True:
+                # SSL explicitly enabled = try SSL
+                use_ssl = True
+                use_starttls = False
+            else:
+                # Default for 2525: use STARTTLS (most common)
+                use_ssl = False
+                use_starttls = True
+        elif settings.SMTP_PORT == 465:
+            # Port 465 always uses SSL
+            use_ssl = True
+            use_starttls = False
+        else:
+            # Port 587 and others: use STARTTLS if TLS enabled
+            if smtp_ssl_setting is True:
+                use_ssl = True
+                use_starttls = False
+            else:
+                use_ssl = False
+                use_starttls = settings.SMTP_TLS
+        
+        # Log configuration for debugging
+        print(f"📧 Email Configuration:")
+        print(f"   Server: {settings.SMTP_HOST}")
+        print(f"   Port: {settings.SMTP_PORT}")
+        print(f"   Username: {settings.SMTP_USERNAME}")
+        print(f"   SSL: {use_ssl}, STARTTLS: {use_starttls}")
+        print(f"   SMTP_TLS setting: {settings.SMTP_TLS}")
+        print(f"   SMTP_SSL setting: {getattr(settings, 'SMTP_SSL', 'Not set')}")
         
         # Configure email
         conf = ConnectionConfig(
@@ -227,30 +259,65 @@ If you have any questions, please contact us at admin@xploitrum.org
         
         # Try to send email, but fall back to saving to file if it fails
         email_sent = False
-        try:
-            fm = FastMail(conf)
-            
-            # Send admin notification first
-            await fm.send_message(admin_message)
-            print(f"✅ Admin notification sent for {registration.firstName} {registration.lastName}")
-            
-            # Send student confirmation
-            await fm.send_message(student_message)
-            print(f"✅ Confirmation email sent to {email_value}")
-            
-            email_sent = True
-        except Exception as email_error:
-            # Log detailed error information for debugging
-            error_msg = str(email_error)
-            print(f"⚠️ Failed to send email: {error_msg}")
+        last_error = None
+        
+        # For port 2525, try both SSL and STARTTLS if first attempt fails
+        configs_to_try = [(use_ssl, use_starttls, "primary")]
+        if settings.SMTP_PORT == 2525 and use_ssl and not use_starttls:
+            # If trying SSL on 2525, also try STARTTLS as fallback
+            configs_to_try.append((False, True, "STARTTLS fallback"))
+        elif settings.SMTP_PORT == 2525 and not use_ssl and not use_starttls:
+            # If no encryption, try STARTTLS
+            configs_to_try.append((False, True, "STARTTLS fallback"))
+        
+        for try_ssl, try_starttls, config_name in configs_to_try:
+            try:
+                # Create config with current SSL/TLS settings
+                try_conf = ConnectionConfig(
+                    MAIL_USERNAME=settings.SMTP_USERNAME,
+                    MAIL_PASSWORD=settings.SMTP_PASSWORD,
+                    MAIL_FROM=settings.FROM_EMAIL,
+                    MAIL_PORT=settings.SMTP_PORT,
+                    MAIL_SERVER=settings.SMTP_HOST,
+                    MAIL_STARTTLS=try_starttls,
+                    MAIL_SSL_TLS=try_ssl,
+                    USE_CREDENTIALS=True,
+                    VALIDATE_CERTS=True,
+                    TIMEOUT=10
+                )
+                
+                print(f"📧 Trying email send with {config_name} (SSL: {try_ssl}, STARTTLS: {try_starttls})")
+                fm = FastMail(try_conf)
+                
+                # Send admin notification first
+                await fm.send_message(admin_message)
+                print(f"✅ Admin notification sent for {registration.firstName} {registration.lastName}")
+                
+                # Send student confirmation
+                await fm.send_message(student_message)
+                print(f"✅ Confirmation email sent to {email_value}")
+                
+                email_sent = True
+                break  # Success, exit loop
+                
+            except Exception as email_error:
+                last_error = email_error
+                error_msg = str(email_error)
+                print(f"⚠️ Failed to send email with {config_name}: {error_msg}")
+                if config_name == "primary":
+                    print(f"   Will try fallback configuration...")
+                import traceback
+                traceback.print_exc()
+                continue  # Try next configuration
+        
+        if not email_sent:
+            # Log final error
+            error_msg = str(last_error) if last_error else "Unknown error"
+            print(f"❌ All email configurations failed. Last error: {error_msg}")
             print(f"   SMTP Server: {settings.SMTP_HOST}")
             print(f"   SMTP Port: {settings.SMTP_PORT}")
             print(f"   SMTP Username: {settings.SMTP_USERNAME}")
-            print(f"   Use SSL: {use_ssl}, Use STARTTLS: {use_starttls}")
             print(f"   Registration will be saved to file instead")
-            import traceback
-            traceback.print_exc()
-            email_sent = False
         finally:
             # Clean up temp file
             try:
