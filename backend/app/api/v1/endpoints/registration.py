@@ -261,63 +261,64 @@ If you have any questions, please contact us at admin@xploitrum.org
         email_sent = False
         last_error = None
         
-        # For port 2525, try both SSL and STARTTLS if first attempt fails
-        configs_to_try = [(use_ssl, use_starttls, "primary")]
-        if settings.SMTP_PORT == 2525 and use_ssl and not use_starttls:
-            # If trying SSL on 2525, also try STARTTLS as fallback
-            configs_to_try.append((False, True, "STARTTLS fallback"))
-        elif settings.SMTP_PORT == 2525 and not use_ssl and not use_starttls:
-            # If no encryption, try STARTTLS
-            configs_to_try.append((False, True, "STARTTLS fallback"))
-        
-        for try_ssl, try_starttls, config_name in configs_to_try:
-            try:
-                # Create config with current SSL/TLS settings
-                try_conf = ConnectionConfig(
-                    MAIL_USERNAME=settings.SMTP_USERNAME,
-                    MAIL_PASSWORD=settings.SMTP_PASSWORD,
-                    MAIL_FROM=settings.FROM_EMAIL,
-                    MAIL_PORT=settings.SMTP_PORT,
-                    MAIL_SERVER=settings.SMTP_HOST,
-                    MAIL_STARTTLS=try_starttls,
-                    MAIL_SSL_TLS=try_ssl,
-                    USE_CREDENTIALS=True,
-                    VALIDATE_CERTS=True,
-                    TIMEOUT=10
-                )
-                
-                print(f"📧 Trying email send with {config_name} (SSL: {try_ssl}, STARTTLS: {try_starttls})")
-                fm = FastMail(try_conf)
-                
-                # Send admin notification first
-                await fm.send_message(admin_message)
-                print(f"✅ Admin notification sent for {registration.firstName} {registration.lastName}")
-                
-                # Send student confirmation
-                await fm.send_message(student_message)
-                print(f"✅ Confirmation email sent to {email_value}")
-                
-                email_sent = True
-                break  # Success, exit loop
-                
-            except Exception as email_error:
-                last_error = email_error
-                error_msg = str(email_error)
-                print(f"⚠️ Failed to send email with {config_name}: {error_msg}")
-                if config_name == "primary":
-                    print(f"   Will try fallback configuration...")
-                import traceback
-                traceback.print_exc()
-                continue  # Try next configuration
-        
-        if not email_sent:
-            # Log final error
-            error_msg = str(last_error) if last_error else "Unknown error"
-            print(f"❌ All email configurations failed. Last error: {error_msg}")
-            print(f"   SMTP Server: {settings.SMTP_HOST}")
-            print(f"   SMTP Port: {settings.SMTP_PORT}")
-            print(f"   SMTP Username: {settings.SMTP_USERNAME}")
-            print(f"   Registration will be saved to file instead")
+        try:
+            # For port 2525, try both SSL and STARTTLS if first attempt fails
+            configs_to_try = [(use_ssl, use_starttls, "primary")]
+            if settings.SMTP_PORT == 2525 and use_ssl and not use_starttls:
+                # If trying SSL on 2525, also try STARTTLS as fallback
+                configs_to_try.append((False, True, "STARTTLS fallback"))
+            elif settings.SMTP_PORT == 2525 and not use_ssl and not use_starttls:
+                # If no encryption, try STARTTLS
+                configs_to_try.append((False, True, "STARTTLS fallback"))
+            
+            for try_ssl, try_starttls, config_name in configs_to_try:
+                try:
+                    # Create config with current SSL/TLS settings
+                    try_conf = ConnectionConfig(
+                        MAIL_USERNAME=settings.SMTP_USERNAME,
+                        MAIL_PASSWORD=settings.SMTP_PASSWORD,
+                        MAIL_FROM=settings.FROM_EMAIL,
+                        MAIL_PORT=settings.SMTP_PORT,
+                        MAIL_SERVER=settings.SMTP_HOST,
+                        MAIL_STARTTLS=try_starttls,
+                        MAIL_SSL_TLS=try_ssl,
+                        USE_CREDENTIALS=True,
+                        VALIDATE_CERTS=True,
+                        TIMEOUT=10
+                    )
+                    
+                    print(f"📧 Trying email send with {config_name} (SSL: {try_ssl}, STARTTLS: {try_starttls})")
+                    fm = FastMail(try_conf)
+                    
+                    # Send admin notification first
+                    await fm.send_message(admin_message)
+                    print(f"✅ Admin notification sent for {registration.firstName} {registration.lastName}")
+                    
+                    # Send student confirmation
+                    await fm.send_message(student_message)
+                    print(f"✅ Confirmation email sent to {email_value}")
+                    
+                    email_sent = True
+                    break  # Success, exit loop
+                    
+                except Exception as email_error:
+                    last_error = email_error
+                    error_msg = str(email_error)
+                    print(f"⚠️ Failed to send email with {config_name}: {error_msg}")
+                    if config_name == "primary":
+                        print(f"   Will try fallback configuration...")
+                    import traceback
+                    traceback.print_exc()
+                    continue  # Try next configuration
+            
+            if not email_sent:
+                # Log final error
+                error_msg = str(last_error) if last_error else "Unknown error"
+                print(f"❌ All email configurations failed. Last error: {error_msg}")
+                print(f"   SMTP Server: {settings.SMTP_HOST}")
+                print(f"   SMTP Port: {settings.SMTP_PORT}")
+                print(f"   SMTP Username: {settings.SMTP_USERNAME}")
+                print(f"   Registration will be saved to file instead")
         finally:
             # Clean up temp file
             try:
