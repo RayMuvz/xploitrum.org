@@ -52,23 +52,16 @@ async def send_contact_message(contact: ContactMessage):
         </html>
         """
         
-        # Configure email - try different ports for DigitalOcean compatibility
-        use_ssl = settings.SMTP_PORT == 465
-        use_2525 = settings.SMTP_PORT == 2525
-        
-        # Use different server for port 2525 (SendGrid, Mailgun, etc.)
-        if use_2525:
-            smtp_server = "smtp.sendgrid.net"  # or smtp.mailgun.org
+        # Configure email - respect SMTP_SSL setting if available, otherwise infer from port
+        if hasattr(settings, 'SMTP_SSL') and settings.SMTP_SSL is not None:
+            use_ssl = settings.SMTP_SSL
         else:
-            smtp_server = settings.SMTP_HOST or "smtp.gmail.com"
-            
-        # Try multiple SMTP servers if one fails
-        smtp_servers = [
-            (smtp_server, settings.SMTP_PORT),
-            ("smtp.gmail.com", 2525),  # Try Gmail on port 2525
-            ("smtp.sendgrid.net", 587),  # Try SendGrid
-            ("smtp.mailgun.org", 587),   # Try Mailgun
-        ]
+            use_ssl = settings.SMTP_PORT == 465
+        
+        smtp_server = settings.SMTP_HOST or "smtp.gmail.com"
+        
+        # STARTTLS is used when TLS is enabled but SSL is not (and port is typically 587)
+        use_starttls = not use_ssl and settings.SMTP_TLS and settings.SMTP_PORT != 465
             
         conf = ConnectionConfig(
             MAIL_USERNAME=settings.SMTP_USERNAME or "noreply@xploitrum.org",
@@ -76,7 +69,7 @@ async def send_contact_message(contact: ContactMessage):
             MAIL_FROM=settings.FROM_EMAIL,
             MAIL_PORT=settings.SMTP_PORT,
             MAIL_SERVER=smtp_server,
-            MAIL_STARTTLS=settings.SMTP_TLS and not use_ssl,
+            MAIL_STARTTLS=use_starttls,
             MAIL_SSL_TLS=use_ssl,
             USE_CREDENTIALS=bool(settings.SMTP_USERNAME and settings.SMTP_PASSWORD),
             VALIDATE_CERTS=True

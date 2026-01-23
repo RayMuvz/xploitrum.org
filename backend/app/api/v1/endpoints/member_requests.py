@@ -83,8 +83,15 @@ async def send_member_acceptance_email(email: str, username: str, temp_password:
         </html>
         """
         
-        # Use TLS for port 587, SSL for port 465
-        use_ssl = settings.SMTP_PORT == 465
+        # Determine if we should use SSL or STARTTLS
+        # If SMTP_SSL is explicitly set, use it; otherwise infer from port
+        if hasattr(settings, 'SMTP_SSL') and settings.SMTP_SSL is not None:
+            use_ssl = settings.SMTP_SSL
+        else:
+            use_ssl = settings.SMTP_PORT == 465
+        
+        # STARTTLS is used when TLS is enabled but SSL is not (and port is typically 587)
+        use_starttls = not use_ssl and settings.SMTP_TLS and settings.SMTP_PORT != 465
         
         # Support both SMTP_HOST and SMTP_SERVER from .env
         smtp_server = settings.SMTP_HOST or settings.SMTP_SERVER or "smtp.gmail.com"
@@ -95,7 +102,7 @@ async def send_member_acceptance_email(email: str, username: str, temp_password:
             MAIL_FROM=settings.FROM_EMAIL,
             MAIL_PORT=settings.SMTP_PORT,
             MAIL_SERVER=smtp_server,
-            MAIL_STARTTLS=not use_ssl and settings.SMTP_TLS,
+            MAIL_STARTTLS=use_starttls,
             MAIL_SSL_TLS=use_ssl,
             USE_CREDENTIALS=True,
             VALIDATE_CERTS=True
@@ -169,8 +176,15 @@ async def send_member_decline_email(email: str, first_name: str, notes: Optional
         </html>
         """
         
-        # Use TLS for port 587, SSL for port 465
-        use_ssl = settings.SMTP_PORT == 465
+        # Determine if we should use SSL or STARTTLS
+        # If SMTP_SSL is explicitly set, use it; otherwise infer from port
+        if hasattr(settings, 'SMTP_SSL') and settings.SMTP_SSL is not None:
+            use_ssl = settings.SMTP_SSL
+        else:
+            use_ssl = settings.SMTP_PORT == 465
+        
+        # STARTTLS is used when TLS is enabled but SSL is not (and port is typically 587)
+        use_starttls = not use_ssl and settings.SMTP_TLS and settings.SMTP_PORT != 465
         
         # Support both SMTP_HOST and SMTP_SERVER from .env
         smtp_server = settings.SMTP_HOST or settings.SMTP_SERVER or "smtp.gmail.com"
@@ -181,7 +195,7 @@ async def send_member_decline_email(email: str, first_name: str, notes: Optional
             MAIL_FROM=settings.FROM_EMAIL,
             MAIL_PORT=settings.SMTP_PORT,
             MAIL_SERVER=smtp_server,
-            MAIL_STARTTLS=not use_ssl and settings.SMTP_TLS,
+            MAIL_STARTTLS=use_starttls,
             MAIL_SSL_TLS=use_ssl,
             USE_CREDENTIALS=True,
             VALIDATE_CERTS=True

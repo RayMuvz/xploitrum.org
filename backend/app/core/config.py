@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     SMTP_USERNAME: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     SMTP_TLS: bool = True
+    SMTP_SSL: bool = False
     FROM_EMAIL: str = "noreply@xploitrum.org"
     
     def __init__(self, **kwargs):

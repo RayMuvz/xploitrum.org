@@ -23,6 +23,16 @@ async def send_email_background(
         # Get SMTP server from config
         smtp_server = settings.SMTP_HOST or settings.SMTP_SERVER or 'smtp.gmail.com'
         
+        # Determine if we should use SSL or STARTTLS
+        # If SMTP_SSL is explicitly set, use it; otherwise infer from port
+        if hasattr(settings, 'SMTP_SSL') and settings.SMTP_SSL is not None:
+            use_ssl = settings.SMTP_SSL
+        else:
+            use_ssl = settings.SMTP_PORT == 465
+        
+        # STARTTLS is used when TLS is enabled but SSL is not (and port is typically 587)
+        use_starttls = not use_ssl and settings.SMTP_TLS and settings.SMTP_PORT != 465
+        
         # Configure email connection
         conf = ConnectionConfig(
             MAIL_USERNAME=settings.SMTP_USERNAME,
@@ -30,8 +40,8 @@ async def send_email_background(
             MAIL_FROM=settings.FROM_EMAIL,
             MAIL_PORT=settings.SMTP_PORT,
             MAIL_SERVER=smtp_server,
-            MAIL_STARTTLS=settings.SMTP_TLS,
-            MAIL_SSL_TLS=False,
+            MAIL_STARTTLS=use_starttls,
+            MAIL_SSL_TLS=use_ssl,
             USE_CREDENTIALS=True,
             VALIDATE_CERTS=True,
             TEMPLATE_FOLDER=None

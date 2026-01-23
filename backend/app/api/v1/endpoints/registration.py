@@ -183,10 +183,16 @@ If you have any questions, please contact us at admin@xploitrum.org
                 detail="SMTP server not configured. Please set SMTP_HOST environment variable."
             )
         
-        # Determine if we should use SSL or STARTTLS based on port
+        # Determine if we should use SSL or STARTTLS
+        # If SMTP_SSL is explicitly set, use it; otherwise infer from port
         # Port 465 typically uses SSL, port 587 uses STARTTLS
-        use_ssl = settings.SMTP_PORT == 465
-        use_starttls = settings.SMTP_PORT == 587 and settings.SMTP_TLS
+        if hasattr(settings, 'SMTP_SSL') and settings.SMTP_SSL is not None:
+            use_ssl = settings.SMTP_SSL
+        else:
+            use_ssl = settings.SMTP_PORT == 465
+        
+        # STARTTLS is used when TLS is enabled but SSL is not (and port is typically 587)
+        use_starttls = not use_ssl and settings.SMTP_TLS and settings.SMTP_PORT != 465
         
         # Configure email
         conf = ConnectionConfig(
