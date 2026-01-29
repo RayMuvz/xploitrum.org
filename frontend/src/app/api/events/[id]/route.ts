@@ -41,9 +41,7 @@ export async function PUT(
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
         // Get the authorization header from the request
-        const authHeader = request.headers.get('Authorization')
-
-        // Get the request body
+        const authHeader = request.headers.get('Authorization')        // Get the request body
         const body = await request.json()
 
         const response = await fetch(`${apiUrl}/api/v1/events/${encodeURIComponent(eventId)}`, {

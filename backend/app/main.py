@@ -90,11 +90,14 @@ async def xploitrum_exception_handler(request: Request, exc: XploitRUMException)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
+    # Include both "detail" (FastAPI default) and "message" for client compatibility
+    detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "error": "HTTP_ERROR",
-            "message": exc.detail,
+            "message": detail,
+            "detail": detail,
             "details": None
         }
     )

@@ -187,9 +187,11 @@ export default function EventsPage() {
                 fetchEvents() // Refresh to show updated registration count
             } else {
                 const error = await response.json()
+                // Backend HTTP exception handler returns { message }; some endpoints use { detail }
+                const errorMessage = error.message ?? error.detail ?? "Failed to register for event"
                 toast({
                     title: "Registration Failed",
-                    description: error.detail || "Failed to register for event",
+                    description: errorMessage,
                     variant: "destructive"
                 })
             }

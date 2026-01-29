@@ -68,7 +68,11 @@ async def register_student(registration: StudentRegistration):
         
         # Write data
         major_value = registration.otherMajor if registration.major == 'Other' else registration.major
-        email_value = f"{registration.emailPrefix}@upr.edu"
+        # Normalize email prefix: strip @upr.edu if user sent full address (avoid double @upr.edu)
+        email_prefix = registration.emailPrefix.strip()
+        if email_prefix.lower().endswith("@upr.edu"):
+            email_prefix = email_prefix[:-9].strip()
+        email_value = f"{email_prefix}@upr.edu"
         
         csv_writer.writerow([
             registration.firstName,

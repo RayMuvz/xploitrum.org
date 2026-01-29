@@ -82,9 +82,11 @@ export default function RegisterPage() {
                     phoneNumber: '',
                 })
             } else {
-                const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }))
+                const errorData = await response.json().catch(() => ({ message: 'Unknown error' }))
                 console.error('Registration failed:', errorData)
-                alert(`Registration failed: ${errorData.detail || 'Please try again.'}`)
+                // Backend returns { message } from HTTP exception handler; some endpoints use { detail }
+                const errorMessage = errorData.message ?? errorData.detail ?? 'Please try again.'
+                alert(`Registration failed: ${errorMessage}`)
             }
         } catch (error) {
             console.error('Registration failed:', error)
@@ -92,8 +94,13 @@ export default function RegisterPage() {
         }
     }
 
+    /** Normalize email prefix: strip @upr.edu if user pasted full email */
+    const normalizeEmailPrefix = (value: string) =>
+        value.replace(/@upr\.edu$/i, '').trim().toLowerCase()
+
     const handleInputChange = (field: string, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }))
+        const normalized = field === 'emailPrefix' ? normalizeEmailPrefix(value) : value
+        setFormData(prev => ({ ...prev, [field]: normalized }))
     }
 
     return (
@@ -316,7 +323,7 @@ export default function RegisterPage() {
                                             type="text"
                                             required
                                             value={formData.emailPrefix}
-                                            onChange={(e) => handleInputChange('emailPrefix', e.target.value.toLowerCase())}
+                                            onChange={(e) => handleInputChange('emailPrefix', e.target.value)}
                                             className="flex-1 px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:border-cyber-400 text-white"
                                             placeholder="john.doe"
                                         />
