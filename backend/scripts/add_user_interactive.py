@@ -21,26 +21,36 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 def prompt(text, default="", required=False):
     """Prompt for input. Optional default, optional required."""
     if default:
-        line = input(f"{text} [{default}]: ").strip() or default
+        line = input(f"  {text} [{default}]: ").strip() or default
     else:
-        line = input(f"{text}: ").strip()
+        line = input(f"  {text}: ").strip()
     if required and not line:
         print("  This field is required.")
         return prompt(text, default, required)
     return line if line else None
 
 
+def ask_add_edit(param_name, current_value, get_value_fn):
+    """
+    Ask "Do you want to add/edit {param_name}? (Y/N)".
+    - Y: run get_value_fn() and return the result.
+    - N: return current_value (move on to next parameter).
+    """
+    ans = input(f"Do you want to add/edit {param_name}? (Y/N): ").strip().upper()
+    if ans in ("Y", "YES"):
+        return get_value_fn()
+    return current_value
+
+
 def prompt_if_exists(value, param_name, check_exists_fn, get_new_prompt):
     """
     If value already exists in DB, prompt: "X already exists. Enter a different value? (Y/N)"
-    - Y: prompt for new value (get_new_prompt), re-check until unique or user says N.
-    - N: keep current value and move on to next parameter (return value as-is).
-    Returns the value to use (original or new).
+    - Y: prompt for new value, re-check until unique or user says N.
+    - N: keep current value and move on.
     """
     while check_exists_fn(value):
         ans = input(f"  {param_name} '{value}' already exists. Enter a different value? (Y/N): ").strip().upper()
         if ans in ("N", "NO"):
-            # User said no: move on to next parameter (keep current value)
             return value
         if ans in ("Y", "YES"):
             value = get_new_prompt()
@@ -112,43 +122,46 @@ def main():
     def username_exists(u):
         return session.query(User).filter(User.username == u).first() is not None
 
-    print("\n--- Add user (email: {}) ---\n".format(email))
+    print("\n--- Add user (email from argument: {}) ---\n".format(email))
 
-    # Email: if already exists, prompt Y/N; Y = ask for new value, N = keep and move on
-    email = prompt_if_exists(
-        email, "Email", email_exists,
-        lambda: input("  Enter new email: ").strip().lower()
-    )
+    # Each parameter: "Do you want to add/edit X? (Y/N)". Y = prompt for value, N = skip (keep current)
+    email = ask_add_edit("email", email, lambda: input("  Email: ").strip().lower())
+    if email:
+        email = prompt_if_exists(email, "Email", email_exists, lambda: input("  Enter new email: ").strip().lower())
+    username = ask_add_edit("username", None, lambda: prompt("Username", required=True))
+    if username:
+        username = prompt_if_exists(username, "Username", username_exists, lambda: prompt("  Enter new username", required=True))
+
+    password = ask_add_edit("password", None, prompt_password)
+
+    first_name = ask_add_edit("first name", None, lambda: prompt("First name"))
+    last_name = ask_add_edit("last name", None, lambda: prompt("Last name"))
+    full_name = None
+    if first_name or last_name:
+        full_name = " ".join(filter(None, [first_name, last_name])).strip() or None
+    if full_name is None:
+        full_name = ask_add_edit("full name", None, lambda: prompt("Full name"))
+
+    country = ask_add_edit("country", None, lambda: prompt("Country"))
+    university = ask_add_edit("university", None, lambda: prompt("University"))
+    bio = ask_add_edit("bio", None, lambda: prompt("Bio (short)"))
+    github_username = ask_add_edit("GitHub username", None, lambda: prompt("GitHub username"))
+    linkedin_url = ask_add_edit("LinkedIn URL", None, lambda: prompt("LinkedIn URL"))
+    website_url = ask_add_edit("Website URL", None, lambda: prompt("Website URL"))
+
+    # Required for creating a user
     if not email or "@" not in email:
         print("Aborted: valid email is required.")
         session.close()
         sys.exit(0)
-
-    # Username: prompt then if exists, same Y/N flow
-    username = prompt("Username", required=True)
-    username = prompt_if_exists(
-        username, "Username", username_exists,
-        lambda: prompt("  Enter new username", required=True)
-    )
     if not username:
         print("Aborted: username is required.")
         session.close()
         sys.exit(0)
-
-    password = prompt_password()
-    first_name = prompt("First name")
-    last_name = prompt("Last name")
-    full_name = None
-    if first_name or last_name:
-        full_name = " ".join(filter(None, [first_name, last_name])).strip() or None
-    if not full_name:
-        full_name = prompt("Full name (if not using first/last)")
-    country = prompt("Country")
-    university = prompt("University")
-    bio = prompt("Bio (short)")
-    github_username = prompt("GitHub username")
-    linkedin_url = prompt("LinkedIn URL")
-    website_url = prompt("Website URL")
+    if not password:
+        print("Aborted: password is required.")
+        session.close()
+        sys.exit(0)
 
     print("\n--- Summary ---")
     print("  Email:    ", email)
