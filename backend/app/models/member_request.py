@@ -28,6 +28,7 @@ class MemberRequest(Base):
     email = Column(String(255), nullable=False, unique=True)
     phone = Column(String(50), nullable=True)
     student_number = Column(String(100), nullable=True)
+    password_hash = Column(String(255), nullable=True)  # hashed password from form; used when request is accepted
     status = Column(Enum(MemberRequestStatus), default=MemberRequestStatus.PENDING, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

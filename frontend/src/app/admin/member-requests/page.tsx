@@ -15,6 +15,7 @@ interface MemberRequest {
     email: string
     phone: string | null
     student_number: string | null
+    password_display: string
     status: string
     created_at: string
     reviewed_by: string | null
@@ -90,7 +91,9 @@ export default function MemberRequestsPage() {
 
             toast({
                 title: "Request Accepted",
-                description: `User account created. Temporary password: ${data.temp_password}`,
+                description: data.temp_password
+                    ? `User account created. Temporary password: ${data.temp_password}`
+                    : "User account created. They can log in with the password they set in their request.",
             })
 
             // Refresh the list
@@ -269,6 +272,9 @@ export default function MemberRequestsPage() {
                                                         <span className="ml-6">Student #: {request.student_number}</span>
                                                     </div>
                                                 )}
+                                                <div className="flex items-center space-x-2">
+                                                    <span className="ml-6">Password: {request.password_display}</span>
+                                                </div>
                                                 <div className="flex items-center space-x-2">
                                                     <Clock className="h-4 w-4" />
                                                     <span>Submitted: {new Date(request.created_at).toLocaleDateString()}</span>

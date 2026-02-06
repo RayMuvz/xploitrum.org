@@ -28,33 +28,42 @@ from fastapi import BackgroundTasks
 router = APIRouter()
 
 
-async def send_member_acceptance_email(email: str, username: str, temp_password: str, first_name: str):
-    """Send email to user when their member request is accepted"""
+async def send_member_acceptance_email(
+    email: str,
+    username: str,
+    first_name: str,
+    *,
+    use_chosen_password: bool = False,
+    temp_password: Optional[str] = None
+):
+    """Send email to user when their member request is accepted."""
     try:
         # Check if email is configured
         if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
             print(f"📧 Email not configured (missing SMTP_USERNAME or SMTP_PASSWORD)")
-            print(f"   Username: {username}, Password: {temp_password}, Email: {email}")
+            print(f"   Username: {username}, Email: {email}")
             return
-        
+
         print(f"📧 Attempting to send acceptance email to {email}")
         smtp_server = settings.SMTP_HOST or settings.SMTP_SERVER or 'smtp.gmail.com'
         print(f"   SMTP Server: {smtp_server}")
         print(f"   SMTP Port: {settings.SMTP_PORT}")
         print(f"   SMTP User: {settings.SMTP_USERNAME}")
-        
-        html_body = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #00d9ff; border-bottom: 2px solid #00d9ff; padding-bottom: 10px;">
-                        Welcome to XploitRUM!
-                    </h2>
+
+        if use_chosen_password:
+            credentials_block = f"""
+                    <div style="background: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+                        <p style="margin: 0;"><strong>Username:</strong> {username}</p>
+                        <p style="margin: 10px 0 0 0;">Log in with the <strong>password you chose</strong> when you submitted your request.</p>
+                    </div>
                     
-                    <p>Hello {first_name},</p>
-                    
-                    <p>Great news! Your member account request has been approved. Your XploitRUM account has been created.</p>
-                    
+                    <p><strong>Next Steps:</strong></p>
+                    <ol>
+                        <li>Go to <a href="https://www.xploitrum.org/login">https://www.xploitrum.org/login</a></li>
+                        <li>Log in with your username and the password you set in your request</li>
+                    </ol>"""
+        else:
+            credentials_block = f"""
                     <div style="background: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
                         <p style="margin: 0;"><strong>Username:</strong> {username}</p>
                         <p style="margin: 10px 0 0 0;"><strong>Temporary Password:</strong> {temp_password}</p>
@@ -71,7 +80,20 @@ async def send_member_acceptance_email(email: str, username: str, temp_password:
                         <li>Go to <a href="https://www.xploitrum.org/login">https://www.xploitrum.org/login</a></li>
                         <li>Log in with the credentials above</li>
                         <li>You will be prompted to change your password</li>
-                    </ol>
+                    </ol>"""
+
+        html_body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #00d9ff; border-bottom: 2px solid #00d9ff; padding-bottom: 10px;">
+                        Welcome to XploitRUM!
+                    </h2>
+                    
+                    <p>Hello {first_name},</p>
+                    
+                    <p>Great news! Your member account request has been approved. Your XploitRUM account has been created.</p>
+                    {credentials_block}
                     
                     <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
                     
@@ -229,6 +251,7 @@ class MemberRequestCreate(BaseModel):
     first_name: str
     last_name: str
     email: EmailStr
+    password: str
     phone: Optional[str] = None
     student_number: Optional[str] = None
 
@@ -240,6 +263,7 @@ class MemberRequestResponse(BaseModel):
     email: str
     phone: Optional[str]
     student_number: Optional[str]
+    password_display: str  # "********" when password set, "—" otherwise
     status: str
     created_at: str
     reviewed_by: Optional[str]
@@ -269,6 +293,10 @@ async def submit_member_request(
         # Validate email domain
         if not request_data.email.endswith("@upr.edu"):
             raise ValidationError("Email must be an institutional email (@upr.edu)")
+
+        # Validate password
+        if len(request_data.password) < 8:
+            raise ValidationError("Password must be at least 8 characters")
         
         # Check if user already exists
         existing_user = db.execute(
@@ -299,10 +327,11 @@ async def submit_member_request(
                     existing_request.last_name = request_data.last_name
                     existing_request.phone = request_data.phone
                     existing_request.student_number = request_data.student_number
+                    existing_request.password_hash = get_password_hash(request_data.password)
                     existing_request.notes = None
                     existing_request.reviewed_by = None
                     existing_request.reviewed_at = None
-                    
+
                     db.commit()
                     db.refresh(existing_request)
                     
@@ -323,6 +352,7 @@ async def submit_member_request(
             email=request_data.email,
             phone=request_data.phone,
             student_number=request_data.student_number,
+            password_hash=get_password_hash(request_data.password),
             status=MemberRequestStatus.PENDING
         )
         
@@ -372,6 +402,7 @@ async def get_member_requests(
                 email=req.email,
                 phone=req.phone,
                 student_number=req.student_number,
+                password_display="********" if req.password_hash else "—",
                 status=req.status.value,
                 created_at=req.created_at.isoformat(),
                 reviewed_by=req.reviewed_by,
@@ -414,60 +445,77 @@ async def accept_member_request(
         
         if existing_user:
             raise ValidationError("User with this email already exists")
-        
-        # Generate temporary password
-        temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16))
-        
+
+        # Use password from request if they set one; otherwise generate temp password (legacy)
+        use_chosen_password = request.password_hash is not None
+        if use_chosen_password:
+            hashed_password = request.password_hash
+            must_change_password = False
+        else:
+            temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16))
+            hashed_password = get_password_hash(temp_password)
+            must_change_password = True
+
         # Create username from email
         username = request.email.split("@")[0]
-        
+
         # Check if username exists
         username_check = db.execute(
             select(User).where(User.username == username)
         ).scalar_one_or_none()
-        
+
         if username_check:
             username = f"{username}{secrets.randbelow(1000)}"
-        
+
         # Create new user
-        hashed_password = get_password_hash(temp_password)
         new_user = User(
             username=username,
             email=request.email,
             password_hash=hashed_password,
             full_name=f"{request.first_name} {request.last_name}",
             role=UserRole.USER,
-            email_verified=False,  # They need to change password on first login
-            must_change_password=True  # Force password change on first login
+            email_verified=False,
+            must_change_password=must_change_password
         )
-        
+
         db.add(new_user)
-        
+
         # Update request status
         request.status = MemberRequestStatus.ACCEPTED
         request.reviewed_by = current_user.username
         request.reviewed_at = datetime.utcnow()
-        
+
         db.commit()
         db.refresh(new_user)
         db.refresh(request)
-        
+
         # Send email notification in background (non-blocking)
-        # Use a separate thread to avoid blocking the response
-        import threading
-        threading.Thread(
-            target=lambda: asyncio.run(send_member_acceptance_email(request.email, new_user.username, temp_password, request.first_name)),
-            daemon=True
-        ).start()
-        
-        print(f"User created: {new_user.email}, temp password: {temp_password}")
-        
-        return {
+        if use_chosen_password:
+            threading.Thread(
+                target=lambda: asyncio.run(send_member_acceptance_email(
+                    request.email, new_user.username, request.first_name,
+                    use_chosen_password=True, temp_password=None
+                )),
+                daemon=True
+            ).start()
+        else:
+            tp = temp_password
+            threading.Thread(
+                target=lambda: asyncio.run(send_member_acceptance_email(
+                    request.email, new_user.username, request.first_name,
+                    use_chosen_password=False, temp_password=tp
+                )),
+                daemon=True
+            ).start()
+
+        result = {
             "message": "Member request accepted",
             "user_id": new_user.id,
             "username": new_user.username,
-            "temp_password": temp_password  # In production, this should be sent via email only
         }
+        if not use_chosen_password:
+            result["temp_password"] = temp_password
+        return result
         
     except (NotFoundError, ValidationError):
         raise

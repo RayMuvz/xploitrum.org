@@ -16,8 +16,15 @@ def create_member_requests_table():
             
             if 'member_requests' in tables:
                 print("✅ Table 'member_requests' already exists")
+                # Migration: add password_hash if missing
+                cols = [c["name"] for c in inspector.get_columns("member_requests")]
+                if "password_hash" not in cols:
+                    print("Adding password_hash column to member_requests...")
+                    conn.execute(text("ALTER TABLE member_requests ADD COLUMN password_hash VARCHAR(255)"))
+                    conn.commit()
+                    print("✅ Added password_hash column")
                 return
-            
+
             print("Creating member_requests table...")
             
             # Create the table
@@ -29,6 +36,7 @@ def create_member_requests_table():
                     email VARCHAR(255) UNIQUE NOT NULL,
                     phone VARCHAR(50),
                     student_number VARCHAR(100),
+                    password_hash VARCHAR(255),
                     status VARCHAR NOT NULL DEFAULT 'pending',
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP,

@@ -21,9 +21,12 @@ export default function LoginPage() {
         firstName: '',
         lastName: '',
         email: '',
+        password: '',
+        confirmPassword: '',
         phone: '',
         studentNumber: ''
     })
+    const [showMemberRequestPassword, setShowMemberRequestPassword] = useState(false)
     const [isSubmittingRequest, setIsSubmittingRequest] = useState(false)
 
     const { login } = useAuth()
@@ -75,6 +78,24 @@ export default function LoginPage() {
             return
         }
 
+        // Password validation (same as change-password)
+        if (!memberRequestData.password || memberRequestData.password.length < 8) {
+            toast({
+                title: "Invalid password",
+                description: "Password must be at least 8 characters.",
+                variant: "destructive",
+            })
+            return
+        }
+        if (memberRequestData.password !== memberRequestData.confirmPassword) {
+            toast({
+                title: "Passwords don't match",
+                description: "Password and Confirm password must match.",
+                variant: "destructive",
+            })
+            return
+        }
+
         try {
             setIsSubmittingRequest(true)
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -87,6 +108,7 @@ export default function LoginPage() {
                     first_name: memberRequestData.firstName,
                     last_name: memberRequestData.lastName,
                     email: memberRequestData.email,
+                    password: memberRequestData.password,
                     phone: memberRequestData.phone,
                     student_number: memberRequestData.studentNumber
                 })
@@ -108,6 +130,8 @@ export default function LoginPage() {
                 firstName: '',
                 lastName: '',
                 email: '',
+                password: '',
+                confirmPassword: '',
                 phone: '',
                 studentNumber: ''
             })
@@ -307,6 +331,55 @@ export default function LoginPage() {
                                         />
                                     </div>
                                     <p className="text-xs text-gray-500">Must be a @upr.edu email address</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label htmlFor="memberPassword" className="text-sm font-medium text-gray-300">
+                                        Password *
+                                    </label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+                                        <input
+                                            id="memberPassword"
+                                            type={showMemberRequestPassword ? 'text' : 'password'}
+                                            value={memberRequestData.password}
+                                            onChange={(e) => setMemberRequestData({ ...memberRequestData, password: e.target.value })}
+                                            className="w-full pl-10 pr-12 py-3 bg-background border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyber-400 focus:border-transparent transition-all"
+                                            placeholder="At least 8 characters"
+                                            disabled={isSubmittingRequest}
+                                            minLength={8}
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowMemberRequestPassword(!showMemberRequestPassword)}
+                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-400 transition-colors"
+                                            disabled={isSubmittingRequest}
+                                        >
+                                            {showMemberRequestPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-gray-500">Minimum 8 characters</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label htmlFor="memberConfirmPassword" className="text-sm font-medium text-gray-300">
+                                        Confirm Password *
+                                    </label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+                                        <input
+                                            id="memberConfirmPassword"
+                                            type={showMemberRequestPassword ? 'text' : 'password'}
+                                            value={memberRequestData.confirmPassword}
+                                            onChange={(e) => setMemberRequestData({ ...memberRequestData, confirmPassword: e.target.value })}
+                                            className="w-full pl-10 pr-4 py-3 bg-background border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyber-400 focus:border-transparent transition-all"
+                                            placeholder="Confirm your password"
+                                            disabled={isSubmittingRequest}
+                                            minLength={8}
+                                            required
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
