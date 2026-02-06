@@ -131,7 +131,9 @@ export default function LeaderboardPage() {
                         >
                             <TrendingUp className="h-8 w-8 mx-auto text-cyber-400 mb-2" />
                             <p className="text-3xl font-bold text-white">
-                                {leaderboard.length > 0 ? leaderboard[0].score : 0}
+                                {leaderboard.length > 0
+                                    ? `${leaderboard[0].username}: ${leaderboard[0].score}`
+                                    : '—'}
                             </p>
                             <p className="text-gray-400">Top Score</p>
                         </motion.div>
