@@ -407,22 +407,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    const extendSession = async () => {
-        try {
-            await axios.post('/api/v1/auth/session/extend')
-            lastActivityAt.current = Date.now()
-            setShowSessionWarning(false)
-            toast({
-                title: 'Session extended',
-                description: 'You will stay logged in.',
-            })
-        } catch (error) {
-            console.error('Session extend failed:', error)
-            clearAuthData()
-            router.push('/login')
-        }
-    }
-
     const updateProfile = async (profileData: Partial<User>) => {
         try {
             const response = await axios.put('/api/v1/auth/me', profileData)
