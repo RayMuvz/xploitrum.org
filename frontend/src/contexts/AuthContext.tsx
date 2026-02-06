@@ -459,10 +459,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tokens,
         isLoading,
         isAuthenticated,
+        showSessionWarning,
         login,
         register,
         logout,
         refreshToken,
+        extendSession,
         updateProfile,
         changePassword,
     }
@@ -470,6 +472,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return (
         <AuthContext.Provider value={value}>
             {children}
+            {showSessionWarning && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
+                    <div className="bg-gray-900 border border-cyber-500 rounded-lg shadow-xl max-w-md w-full p-6">
+                        <h3 className="text-lg font-semibold text-white mb-2">Session expiring soon</h3>
+                        <p className="text-gray-300 mb-4">
+                            You will be logged out due to inactivity in a couple of minutes. Click below to stay logged in.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={extendSession}
+                                className="flex-1 px-4 py-2 bg-cyber-500 hover:bg-cyber-400 text-white font-medium rounded transition"
+                            >
+                                Stay logged in
+                            </button>
+                            <button
+                                onClick={() => { setShowSessionWarning(false); logout() }}
+                                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition"
+                            >
+                                Log out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AuthContext.Provider>
     )
 }
