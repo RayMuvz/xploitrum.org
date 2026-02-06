@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { Footer } from '@/components/footer'
+import { getStoredToken, getAuthHeaders } from '@/lib/auth'
 
 interface PicoChallenge {
     id: number
@@ -41,7 +42,7 @@ function getDifficultyColor(d: string) {
 }
 
 function CTFContent() {
-    const { user } = useAuth()
+    const { user, tokens } = useAuth()
     const { toast } = useToast()
     const [challenges, setChallenges] = useState<PicoChallenge[]>([])
     const [loading, setLoading] = useState(true)
@@ -51,18 +52,23 @@ function CTFContent() {
     const [flagInput, setFlagInput] = useState('')
     const [submitting, setSubmitting] = useState(false)
 
+    const authToken = tokens?.access_token ?? getStoredToken()
+    const authHeaders = getAuthHeaders(authToken)
+
     const fetchChallenges = async () => {
+        if (!authToken) return
         try {
             const params = new URLSearchParams()
             if (category) params.set('category', category)
             if (difficulty) params.set('difficulty', difficulty)
-            const token = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('auth_tokens') || '{}').access_token : ''
             const res = await fetch(`/api/pico/challenges?${params}`, {
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                headers: authHeaders,
             })
             if (res.ok) {
                 const data = await res.json()
                 setChallenges(data)
+            } else {
+                toast({ title: 'Error', description: 'Failed to load challenges', variant: 'destructive' })
             }
         } catch (e) {
             console.error(e)
@@ -73,19 +79,22 @@ function CTFContent() {
     }
 
     useEffect(() => {
+        if (!authToken) {
+            setLoading(false)
+            return
+        }
         fetchChallenges()
-    }, [category, difficulty])
+    }, [category, difficulty, authToken])
 
     const handleSubmitFlag = async () => {
-        if (!submitModal) return
+        if (!submitModal || !authToken) return
         setSubmitting(true)
         try {
-            const token = JSON.parse(localStorage.getItem('auth_tokens') || '{}').access_token
             const res = await fetch(`/api/pico/challenges/${submitModal.challenge.id}/submit`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
+                    ...authHeaders,
                 },
                 body: JSON.stringify({ flag: flagInput }),
             })

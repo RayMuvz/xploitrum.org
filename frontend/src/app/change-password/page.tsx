@@ -7,9 +7,11 @@ import { Lock, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
+import { getStoredToken, getAuthHeaders } from '@/lib/auth'
 
 export default function ChangePasswordPage() {
-    const { user } = useAuth()
+    const { user, tokens } = useAuth()
+    const authHeaders = getAuthHeaders(tokens?.access_token ?? getStoredToken())
     const router = useRouter()
     const { toast } = useToast()
     const [formData, setFormData] = useState({
@@ -55,20 +57,16 @@ export default function ChangePasswordPage() {
 
         try {
             setIsLoading(true)
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-            const authTokens = localStorage.getItem('auth_tokens')
-            const token = authTokens ? JSON.parse(authTokens).access_token : ''
-
-            const response = await fetch(`${apiUrl}/api/v1/auth/change-password`, {
+            const response = await fetch('/api/v1/auth/change-password', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    ...authHeaders,
                 },
                 body: JSON.stringify({
                     current_password: formData.currentPassword,
-                    new_password: formData.newPassword
-                })
+                    new_password: formData.newPassword,
+                }),
             })
 
             const data = await response.json()
@@ -83,10 +81,8 @@ export default function ChangePasswordPage() {
             })
 
             // Update user in local storage to clear must_change_password flag
-            const userResponse = await fetch(`${apiUrl}/api/v1/auth/me`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const userResponse = await fetch('/api/v1/auth/me', {
+                headers: authHeaders,
             })
 
             if (userResponse.ok) {

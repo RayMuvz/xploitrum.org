@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Plus, Edit, Trash2, Users, Shield, User as UserIcon, X, Mail, AlertTriangle } from 'lucide-react'
+import { getStoredToken, getAuthHeaders } from '@/lib/auth'
 
 interface User {
     id: number
@@ -20,8 +21,9 @@ interface User {
 }
 
 export default function UserManagementPage() {
-    const { user } = useAuth()
+    const { user, tokens } = useAuth()
     const { toast } = useToast()
+    const authHeaders = getAuthHeaders(tokens?.access_token ?? getStoredToken())
     const [users, setUsers] = useState<User[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [showAddUser, setShowAddUser] = useState(false)
@@ -42,14 +44,8 @@ export default function UserManagementPage() {
     const fetchUsers = async () => {
         try {
             setIsLoading(true)
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-            const authTokens = localStorage.getItem('auth_tokens')
-            const token = authTokens ? JSON.parse(authTokens).access_token : ''
-
-            const response = await fetch(`${apiUrl}/api/v1/admin/users?limit=1000`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const response = await fetch('/api/v1/admin/users?limit=1000', {
+                headers: authHeaders,
             })
 
             if (!response.ok) {
@@ -72,19 +68,14 @@ export default function UserManagementPage() {
     const handleToggleRole = async (userId: number, currentRole: string) => {
         try {
             setActionLoading(userId.toString())
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-            const authTokens = localStorage.getItem('auth_tokens')
-            const token = authTokens ? JSON.parse(authTokens).access_token : ''
-
             const newRole = currentRole === 'admin' ? 'user' : 'admin'
-
-            const response = await fetch(`${apiUrl}/api/v1/admin/users/${userId}/role`, {
+            const response = await fetch(`/api/v1/admin/users/${userId}/role`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    ...authHeaders,
                 },
-                body: JSON.stringify({ role: newRole })
+                body: JSON.stringify({ role: newRole }),
             })
 
             if (!response.ok) {
@@ -113,19 +104,14 @@ export default function UserManagementPage() {
     const handleUpdateStatus = async (userId: number, currentStatus: string) => {
         try {
             setActionLoading(userId.toString())
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-            const authTokens = localStorage.getItem('auth_tokens')
-            const token = authTokens ? JSON.parse(authTokens).access_token : ''
-
             const newStatus = currentStatus === 'active' ? 'inactive' : 'active'
-
-            const response = await fetch(`${apiUrl}/api/v1/admin/users/${userId}/status`, {
+            const response = await fetch(`/api/v1/admin/users/${userId}/status`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    ...authHeaders,
                 },
-                body: JSON.stringify({ status: newStatus })
+                body: JSON.stringify({ status: newStatus }),
             })
 
             if (!response.ok) {
@@ -165,17 +151,13 @@ export default function UserManagementPage() {
 
         try {
             setActionLoading('creating')
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-            const authTokens = localStorage.getItem('auth_tokens')
-            const token = authTokens ? JSON.parse(authTokens).access_token : ''
-
-            const response = await fetch(`${apiUrl}/api/v1/admin/users`, {
+            const response = await fetch('/api/v1/admin/users', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    ...authHeaders,
                 },
-                body: JSON.stringify(newUser)
+                body: JSON.stringify(newUser),
             })
 
             const data = await response.json()
@@ -217,15 +199,9 @@ export default function UserManagementPage() {
 
         try {
             setActionLoading(userId.toString())
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-            const authTokens = localStorage.getItem('auth_tokens')
-            const token = authTokens ? JSON.parse(authTokens).access_token : ''
-
-            const response = await fetch(`${apiUrl}/api/v1/admin/users/${userId}`, {
+            const response = await fetch(`/api/v1/admin/users/${userId}`, {
                 method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: authHeaders,
             })
 
             const data = await response.json()

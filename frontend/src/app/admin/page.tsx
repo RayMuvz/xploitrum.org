@@ -20,10 +20,12 @@ import {
 import { AdminRoute } from '@/contexts/AuthContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
+import { getStoredToken, getAuthHeaders } from '@/lib/auth'
 
 export default function AdminDashboardPage() {
-    const { user } = useAuth()
+    const { user, tokens } = useAuth()
     const router = useRouter()
+    const authHeaders = getAuthHeaders(tokens?.access_token ?? getStoredToken())
     const [registrationOpen, setRegistrationOpen] = useState(false)
     const [isUpdating, setIsUpdating] = useState(false)
     const [stats, setStats] = useState({
@@ -44,8 +46,7 @@ export default function AdminDashboardPage() {
 
     const fetchStats = async () => {
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-            const response = await fetch(`${apiUrl}/api/v1/stats/platform`)
+            const response = await fetch('/api/v1/stats/platform', { headers: authHeaders })
             if (response.ok) {
                 const data = await response.json()
                 setStats(data)
@@ -57,14 +58,8 @@ export default function AdminDashboardPage() {
 
     const fetchRegistrationStatus = async () => {
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-            const authTokens = localStorage.getItem('auth_tokens')
-            const token = authTokens ? JSON.parse(authTokens).access_token : ''
-            
-            const response = await fetch(`${apiUrl}/api/v1/admin/settings/registration`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const response = await fetch('/api/v1/admin/settings/registration', {
+                headers: authHeaders,
             })
             if (response.ok) {
                 const data = await response.json()
@@ -86,17 +81,13 @@ export default function AdminDashboardPage() {
     const toggleRegistration = async () => {
         setIsUpdating(true)
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-            const authTokens = localStorage.getItem('auth_tokens')
-            const token = authTokens ? JSON.parse(authTokens).access_token : ''
-
-            const response = await fetch(`${apiUrl}/api/v1/admin/settings/registration`, {
+            const response = await fetch('/api/v1/admin/settings/registration', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    ...authHeaders,
                 },
-                body: JSON.stringify({ enabled: !registrationOpen })
+                body: JSON.stringify({ enabled: !registrationOpen }),
             })
 
             if (response.ok) {

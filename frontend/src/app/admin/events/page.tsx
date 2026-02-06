@@ -22,6 +22,7 @@ import { AdminRoute } from '@/contexts/AuthContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
+import { getStoredToken, getAuthHeaders } from '@/lib/auth'
 
 interface Event {
     id: number
@@ -60,8 +61,9 @@ interface EventFormData {
 }
 
 export default function AdminEventsPage() {
-    const { user } = useAuth()
+    const { user, tokens } = useAuth()
     const { toast } = useToast()
+    const authHeaders = getAuthHeaders(tokens?.access_token ?? getStoredToken())
 
     const [events, setEvents] = useState<Event[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -95,9 +97,7 @@ export default function AdminEventsPage() {
     const fetchEvents = async () => {
         try {
             const response = await fetch('/api/events?limit=100', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access_token : ''}`
-                }
+                headers: authHeaders,
             })
 
             if (response.ok) {
@@ -118,9 +118,7 @@ export default function AdminEventsPage() {
         try {
             const response = await fetch('/api/events/update-statuses', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access_token : ''}`
-                }
+                headers: authHeaders,
             })
 
             if (response.ok) {
@@ -155,7 +153,7 @@ export default function AdminEventsPage() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access_token : ''}`
+                    ...authHeaders,
                 },
                 body: JSON.stringify({
                     ...formData,
@@ -208,7 +206,7 @@ export default function AdminEventsPage() {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access_token : ''}`
+                    ...authHeaders,
                 },
                 body: JSON.stringify({
                     ...formData,
@@ -253,7 +251,7 @@ export default function AdminEventsPage() {
             const response = await fetch(`/api/events/${eventId}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access_token : ''}`
+                    ...authHeaders
                 }
             })
 
@@ -286,13 +284,8 @@ export default function AdminEventsPage() {
 
         // Fetch registrants for this event
         try {
-            const authTokens = localStorage.getItem('auth_tokens')
-            const token = authTokens ? JSON.parse(authTokens).access_token : ''
-
             const response = await fetch(`/api/events/${event.id}/registrations`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: authHeaders,
             })
 
             if (response.ok) {

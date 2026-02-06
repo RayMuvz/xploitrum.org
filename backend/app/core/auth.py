@@ -208,30 +208,30 @@ def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: DBSession = Depends(get_db)
 ) -> User:
-    """Get current authenticated user; validates server-side session (idle + absolute timeout) and updates last activity."""
+    """Get current authenticated user; validates server-side session (idle + absolute timeout) when session_id present."""
     try:
         payload = verify_token(token)
         user_id = payload.get("sub")
         session_id = payload.get("session_id")
         if user_id is None:
             raise AuthenticationError("Invalid token")
-        if not session_id:
-            raise AuthenticationError("Session required; please log in again")
 
-        session = db.get(Session, session_id)
-        if session is None:
-            raise AuthenticationError("Session invalid or expired")
-        if _session_expired(session):
-            db.execute(delete(Session).where(Session.id == session_id))
+        # When token has session_id: enforce server-side session (idle + absolute timeout)
+        if session_id:
+            session = db.get(Session, session_id)
+            if session is None:
+                raise AuthenticationError("Session invalid or expired")
+            if _session_expired(session):
+                db.execute(delete(Session).where(Session.id == session_id))
+                db.commit()
+                raise AuthenticationError("Session expired due to inactivity or max time")
+
+            # Update last activity (extends idle timeout)
+            now = _utc_now()
+            session.last_activity_at = now.replace(tzinfo=None) if now.tzinfo else now
             db.commit()
-            raise AuthenticationError("Session expired due to inactivity or max time")
 
-        # Update last activity (extends idle timeout)
-        now = _utc_now()
-        # Store naive UTC for SQLite compatibility
-        session.last_activity_at = now.replace(tzinfo=None) if now.tzinfo else now
-        db.commit()
-
+        # Load user by sub (works for both session-backed and legacy tokens)
         user = db.get(User, int(user_id))
         if user is None:
             raise AuthenticationError("User not found")
@@ -265,6 +265,31 @@ def get_current_admin_user(
         raise AuthenticationError("Admin access required")
     
     return current_user
+
+
+def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme_optional),
+    db: DBSession = Depends(get_db),
+) -> Optional[User]:
+    """Return current user if valid token present, else None. Does not raise."""
+    if not token:
+        return None
+    try:
+        payload = verify_token(token)
+        user_id = payload.get("sub")
+        session_id = payload.get("session_id")
+        if not user_id:
+            return None
+        if session_id:
+            session = db.get(Session, session_id)
+            if session is None or _session_expired(session):
+                return None
+        user = db.get(User, int(user_id))
+        if user is None or not user.is_active:
+            return None
+        return user
+    except Exception:
+        return None
 
 
 def require_role(required_role: str):

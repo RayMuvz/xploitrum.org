@@ -24,25 +24,29 @@ interface MemberRequest {
 }
 
 export default function MemberRequestsPage() {
-    const { user } = useAuth()
+    const { user, tokens } = useAuth()
     const { toast } = useToast()
     const [requests, setRequests] = useState<MemberRequest[]>([])
     const [filter, setFilter] = useState<string>('pending')
     const [isLoading, setIsLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState<string | null>(null)
 
+    const authHeader = tokens?.access_token ? { Authorization: `Bearer ${tokens.access_token}` } : undefined
+
     useEffect(() => {
+        if (!tokens?.access_token) return
         fetchRequests()
-    }, [filter])
+    }, [filter, tokens?.access_token])
 
     const fetchRequests = async () => {
+        if (!tokens?.access_token) return
         try {
             setIsLoading(true)
             const url = filter === 'all'
                 ? '/api/v1/member-requests/'
                 : `/api/v1/member-requests/?status_filter=${filter}`
 
-            const response = await axios.get<MemberRequest[]>(url)
+            const response = await axios.get<MemberRequest[]>(url, { headers: authHeader })
             setRequests(response.data)
         } catch (error) {
             toast({
@@ -56,9 +60,14 @@ export default function MemberRequestsPage() {
     }
 
     const handleAccept = async (requestId: string) => {
+        if (!tokens?.access_token) return
         try {
             setActionLoading(requestId)
-            const response = await axios.put<{ temp_password?: string }>(`/api/v1/member-requests/${requestId}/accept`)
+            const response = await axios.put<{ temp_password?: string }>(
+                `/api/v1/member-requests/${requestId}/accept`,
+                {},
+                { headers: authHeader }
+            )
             const data = response.data
 
             toast({
@@ -82,13 +91,11 @@ export default function MemberRequestsPage() {
     }
 
     const handleDecline = async (requestId: string) => {
-        if (!confirm('Are you sure you want to decline this request?')) {
-            return
-        }
-
+        if (!confirm('Are you sure you want to decline this request?')) return
+        if (!tokens?.access_token) return
         try {
             setActionLoading(requestId)
-            await axios.put(`/api/v1/member-requests/${requestId}/decline`)
+            await axios.put(`/api/v1/member-requests/${requestId}/decline`, {}, { headers: authHeader })
 
             toast({
                 title: "Request Declined",

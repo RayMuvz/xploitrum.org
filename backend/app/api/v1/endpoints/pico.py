@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from app.core.database import get_db
 from app.models.user import User, UserStatus, UserRole
 from app.models.pico_challenge import PicoChallenge, PicoSubmission, PicoCategory, PicoDifficulty
-from app.services.auth_service import get_current_active_user, get_current_admin_user
+from app.core.auth import get_current_active_user, get_current_admin_user
 
 
 def _flag_pattern_to_regex(pattern: str) -> re.Pattern:

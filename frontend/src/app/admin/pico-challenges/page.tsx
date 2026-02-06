@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import Link from 'next/link'
+import { getStoredToken, getAuthHeaders } from '@/lib/auth'
 
 interface PicoChallengeAdmin {
     id: number
@@ -41,7 +42,7 @@ const emptyForm = {
 }
 
 export default function AdminPicoChallengesPage() {
-    const { user } = useAuth()
+    const { user, tokens } = useAuth()
     const { toast } = useToast()
     const [challenges, setChallenges] = useState<PicoChallengeAdmin[]>([])
     const [loading, setLoading] = useState(true)
@@ -51,15 +52,12 @@ export default function AdminPicoChallengesPage() {
     const [saving, setSaving] = useState(false)
     const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
 
-    const getToken = () => {
-        const t = typeof window !== 'undefined' ? localStorage.getItem('auth_tokens') : null
-        return t ? JSON.parse(t).access_token : ''
-    }
+    const authHeaders = getAuthHeaders(tokens?.access_token ?? getStoredToken())
 
     const fetchChallenges = async () => {
         try {
             const res = await fetch('/api/pico/admin/challenges', {
-                headers: { Authorization: `Bearer ${getToken()}` },
+                headers: authHeaders,
             })
             if (res.ok) {
                 const data = await res.json()
@@ -104,7 +102,6 @@ export default function AdminPicoChallengesPage() {
         }
         setSaving(true)
         try {
-            const token = getToken()
             const url = editingId
                 ? `/api/pico/admin/challenges/${editingId}`
                 : '/api/pico/admin/challenges'
@@ -113,7 +110,7 @@ export default function AdminPicoChallengesPage() {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
+                    ...authHeaders,
                 },
                 body: JSON.stringify(formData),
             })
@@ -138,7 +135,7 @@ export default function AdminPicoChallengesPage() {
         try {
             const res = await fetch(`/api/pico/admin/challenges/${id}`, {
                 method: 'DELETE',
-                headers: { Authorization: `Bearer ${getToken()}` },
+                headers: authHeaders,
             })
             if (res.ok) {
                 toast({ title: 'Deleted', description: 'Challenge removed' })

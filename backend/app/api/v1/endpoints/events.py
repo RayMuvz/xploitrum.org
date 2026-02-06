@@ -10,31 +10,9 @@ from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.services.event_service import event_service
-from app.services.auth_service import get_current_active_user, get_current_admin_user
+from app.core.auth import get_current_active_user, get_current_admin_user
 from app.models.user import User
 from app.models.event import Event, EventType, EventStatus
-
-# Optional auth dependency for public endpoints
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
-security = HTTPBearer(auto_error=False)
-
-async def get_current_user_optional(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: Session = Depends(get_db)
-) -> Optional[User]:
-    if not credentials:
-        return None
-    
-    try:
-        from app.services.auth_service import decode_access_token
-        token_data = decode_access_token(credentials.credentials)
-        user = db.query(User).filter(User.id == token_data.get("sub")).first()
-        return user
-    except Exception as e:
-        # Log the error for debugging
-        print(f"Auth error in get_current_user_optional: {e}")
-        return None
 
 router = APIRouter()
 
@@ -395,7 +373,7 @@ async def get_event_registrations(
     from app.models.event import EventRegistration, Event
     
     # Check if user is admin
-    if current_user.role != "admin":
+    if current_user.role.value != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     
     # Get event
