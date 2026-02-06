@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     BCRYPT_ROUNDS: int = 12
+    # Server-side session timeouts (enforced on every request)
+    SESSION_IDLE_TIMEOUT_MINUTES: int = 30   # Log out after this much inactivity
+    SESSION_ABSOLUTE_TIMEOUT_MINUTES: int = 480  # Max session lifetime (e.g. 8 hours)
     
     # Database
     DATABASE_URL: str = "sqlite:///./xploitrum.db"

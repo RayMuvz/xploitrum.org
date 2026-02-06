@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import { useToast } from '@/hooks/use-toast'
@@ -20,6 +20,8 @@ interface User {
     last_login?: string
     is_active: boolean
     must_change_password?: boolean
+    idle_timeout_seconds?: number
+    absolute_timeout_seconds?: number
 }
 
 interface AuthTokens {
@@ -27,6 +29,8 @@ interface AuthTokens {
     refresh_token: string
     token_type: string
     expires_in: number
+    idle_timeout_seconds?: number
+    absolute_timeout_seconds?: number
 }
 
 interface AuthContextType {
@@ -34,10 +38,12 @@ interface AuthContextType {
     tokens: AuthTokens | null
     isLoading: boolean
     isAuthenticated: boolean
+    showSessionWarning: boolean
     login: (username: string, password: string) => Promise<void>
     register: (userData: RegisterData) => Promise<void>
     logout: () => void
     refreshToken: () => Promise<void>
+    extendSession: () => Promise<void>
     updateProfile: (profileData: Partial<User>) => Promise<void>
     changePassword: (oldPassword: string, newPassword: string) => Promise<void>
 }
@@ -52,6 +58,52 @@ interface RegisterData {
     university?: string
 }
 
+// Session warning modal (shown before idle timeout)
+function SessionWarningModal({
+    onStayLoggedIn,
+    onLogout,
+}: {
+    onStayLoggedIn: () => void
+    onLogout: () => void
+}) {
+    const [extending, setExtending] = useState(false)
+    const handleStay = async () => {
+        setExtending(true)
+        try {
+            await onStayLoggedIn()
+        } finally {
+            setExtending(false)
+        }
+    }
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
+            <div className="cyber-border max-w-md rounded-lg bg-card p-6 shadow-xl">
+                <h3 className="text-lg font-semibold text-white mb-2">Session expiring soon</h3>
+                <p className="text-gray-400 text-sm mb-6">
+                    You have been inactive. Stay logged in to continue, or log out now.
+                </p>
+                <div className="flex gap-3 justify-end">
+                    <button
+                        type="button"
+                        onClick={onLogout}
+                        className="px-4 py-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-800 transition-colors"
+                    >
+                        Log out
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleStay}
+                        disabled={extending}
+                        className="px-4 py-2 rounded-lg bg-cyber-400 text-black font-medium hover:bg-cyber-300 disabled:opacity-50 transition-colors"
+                    >
+                        {extending ? 'Extending...' : 'Stay logged in'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -62,14 +114,55 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 axios.defaults.baseURL = API_BASE_URL
 
 // Auth provider component
+const SESSION_WARNING_BEFORE_SECONDS = 120 // Show warning 2 min before idle timeout
+
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
     const [tokens, setTokens] = useState<AuthTokens | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [showSessionWarning, setShowSessionWarning] = useState(false)
+    const lastActivityAt = useRef<number>(Date.now())
     const router = useRouter()
     const { toast } = useToast()
 
     const isAuthenticated = !!user && !!tokens
+    const idleTimeoutSeconds = tokens?.idle_timeout_seconds ?? user?.idle_timeout_seconds ?? 30 * 60
+
+    const clearAuthData = useCallback(() => {
+        localStorage.removeItem('auth_tokens')
+        localStorage.removeItem('user')
+        delete axios.defaults.headers.common['Authorization']
+        setUser(null)
+        setTokens(null)
+        setShowSessionWarning(false)
+    }, [])
+
+    // 401 response interceptor: session expired → clear auth and redirect to login
+    useEffect(() => {
+        const id = axios.interceptors.response.use(
+            (response) => {
+                if (response?.config?.url?.includes('/api/') && response?.status >= 200 && response?.status < 300) {
+                    lastActivityAt.current = Date.now()
+                }
+                return response
+            },
+            (error) => {
+                if (error.response?.status === 401) {
+                    clearAuthData()
+                    router.push('/login')
+                    toast({
+                        title: 'Session expired',
+                        description: 'Please log in again.',
+                        variant: 'destructive',
+                    })
+                }
+                return Promise.reject(error)
+            }
+        )
+        return () => {
+            axios.interceptors.response.eject(id)
+        }
+    }, [router, toast, clearAuthData])
 
     // Initialize auth state from localStorage
     useEffect(() => {
@@ -91,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         const userData = response.data
                         setUser(userData)
                         setTokens(parsedTokens)
+                        lastActivityAt.current = Date.now()
 
                         // Check if user must change password and redirect
                         if (userData.must_change_password && window.location.pathname !== '/change-password') {
@@ -115,7 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         initializeAuth()
-    }, [])
+    }, [clearAuthData, router])
 
     // Auto-refresh token
     useEffect(() => {
@@ -128,14 +222,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => clearInterval(refreshInterval)
     }, [tokens])
 
-    // Helper functions
-    const clearAuthData = () => {
-        localStorage.removeItem('auth_tokens')
-        localStorage.removeItem('user')
-        delete axios.defaults.headers.common['Authorization']
-        setUser(null)
-        setTokens(null)
-    }
+    // Session warning timer: show dialog shortly before idle timeout
+    useEffect(() => {
+        if (!isAuthenticated || !idleTimeoutSeconds) return
+        const checkInterval = setInterval(() => {
+            const elapsed = (Date.now() - lastActivityAt.current) / 1000
+            const warningAt = idleTimeoutSeconds - SESSION_WARNING_BEFORE_SECONDS
+            if (elapsed >= warningAt && warningAt > 0) {
+                setShowSessionWarning(true)
+            }
+        }, 30000) // Check every 30s
+        return () => clearInterval(checkInterval)
+    }, [isAuthenticated, idleTimeoutSeconds])
+
+    // Activity listeners: update lastActivity so warning doesn't show while user is active
+    useEffect(() => {
+        if (!isAuthenticated) return
+        let throttle: ReturnType<typeof setTimeout> | null = null
+        const updateActivity = () => {
+            if (!throttle) {
+                lastActivityAt.current = Date.now()
+                throttle = setTimeout(() => { throttle = null }, 1000)
+            }
+        }
+        window.addEventListener('mousemove', updateActivity)
+        window.addEventListener('keydown', updateActivity)
+        return () => {
+            window.removeEventListener('mousemove', updateActivity)
+            window.removeEventListener('keydown', updateActivity)
+            if (throttle) clearTimeout(throttle)
+        }
+    }, [isAuthenticated])
 
     const refreshTokenFromStorage = async (refreshToken: string) => {
         const response = await axios.post('/api/v1/auth/refresh', {
@@ -182,6 +299,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userData = userResponse.data
             setUser(userData)
             localStorage.setItem('user', JSON.stringify(userData))
+            lastActivityAt.current = Date.now()
 
             toast({
                 title: "Welcome back!",
@@ -249,14 +367,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    const logout = () => {
+    const logout = useCallback(() => {
+        const token = tokens?.access_token
+        if (token) {
+            axios.post('/api/v1/auth/logout', {}, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
+        }
         clearAuthData()
         router.push('/')
         toast({
             title: "Logged out",
             description: "You have been successfully logged out.",
         })
-    }
+    }, [tokens?.access_token, clearAuthData, router, toast])
+
+    const extendSession = useCallback(async () => {
+        try {
+            await axios.post('/api/v1/auth/session/extend')
+            lastActivityAt.current = Date.now()
+            setShowSessionWarning(false)
+            toast({
+                title: "Session extended",
+                description: "You will stay logged in.",
+            })
+        } catch {
+            clearAuthData()
+            router.push('/login')
+        }
+    }, [clearAuthData, router, toast])
 
     const refreshToken = async () => {
         if (!tokens?.refresh_token) return
@@ -265,6 +402,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await refreshTokenFromStorage(tokens.refresh_token)
         } catch (error) {
             console.error('Token refresh failed:', error)
+            clearAuthData()
+            router.push('/login')
+        }
+    }
+
+    const extendSession = async () => {
+        try {
+            await axios.post('/api/v1/auth/session/extend')
+            lastActivityAt.current = Date.now()
+            setShowSessionWarning(false)
+            toast({
+                title: 'Session extended',
+                description: 'You will stay logged in.',
+            })
+        } catch (error) {
+            console.error('Session extend failed:', error)
             clearAuthData()
             router.push('/login')
         }

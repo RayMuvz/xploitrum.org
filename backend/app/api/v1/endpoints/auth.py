@@ -10,10 +10,23 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 
 from app.core.database import get_db
-from app.core.auth import authenticate_user, create_access_token, create_refresh_token
-from app.core.auth import get_current_user, verify_token
+from app.core.auth import (
+    authenticate_user,
+    create_access_token,
+    create_refresh_token,
+    get_current_user,
+    verify_token,
+    _session_expired,
+    cleanup_expired_sessions,
+    oauth2_scheme,
+    oauth2_scheme_optional,
+)
 from app.models.user import User
+from app.models.session import Session
+from app.core.config import settings
 from app.core.exceptions import AuthenticationError, ValidationError
+from sqlalchemy import select, delete
+import uuid
 
 router = APIRouter()
 
@@ -22,6 +35,9 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    expires_in: Optional[int] = None  # JWT access token lifetime (seconds)
+    idle_timeout_seconds: Optional[int] = None  # Session idle timeout (seconds)
+    absolute_timeout_seconds: Optional[int] = None  # Max session lifetime (seconds)
 
 
 class TokenRefresh(BaseModel):
@@ -70,18 +86,27 @@ def login(
         
         if user.is_locked:
             raise AuthenticationError("Account is temporarily locked")
-        
-        # Create tokens
-        access_token = create_access_token(data={"sub": str(user.id)})
-        refresh_token_value = create_refresh_token(data={"sub": str(user.id)})
-        
-        print(f"Tokens created for user: {user.username}")  # Debug
-        
+
+        # Create server-side session (for idle + absolute timeout)
+        session_id = str(uuid.uuid4())
+        session = Session(
+            id=session_id,
+            user_id=user.id,
+        )
+        db.add(session)
+        db.commit()
+
+        token_data = {"sub": str(user.id), "session_id": session_id}
+        access_token = create_access_token(data=token_data)
+        refresh_token_value = create_refresh_token(data=token_data)
+
         return {
             "access_token": access_token,
             "refresh_token": refresh_token_value,
             "token_type": "bearer",
-            "expires_in": 1800  # 30 minutes in seconds
+            "expires_in": settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            "idle_timeout_seconds": settings.SESSION_IDLE_TIMEOUT_MINUTES * 60,
+            "absolute_timeout_seconds": settings.SESSION_ABSOLUTE_TIMEOUT_MINUTES * 60,
         }
         
     except AuthenticationError as e:
@@ -149,29 +174,45 @@ def refresh_token(
     token_data: TokenRefresh,
     db: Session = Depends(get_db)
 ):
-    """Refresh access token"""
+    """Refresh access token; validates server-side session and extends last_activity."""
     try:
         payload = verify_token(token_data.refresh_token)
         user_id = payload.get("sub")
-        
+        session_id = payload.get("session_id")
         if not user_id:
             raise AuthenticationError("Invalid refresh token")
-        
-        # Get user
+        if not session_id:
+            raise AuthenticationError("Session required; please log in again")
+
+        session = db.get(Session, session_id)
+        if not session:
+            raise AuthenticationError("Session expired")
+        if _session_expired(session):
+            db.execute(delete(Session).where(Session.id == session_id))
+            db.commit()
+            raise AuthenticationError("Session expired")
+
+        from app.core.auth import _utc_now
+        now = _utc_now()
+        session.last_activity_at = now.replace(tzinfo=None) if now.tzinfo else now
+        db.commit()
+
         user = db.get(User, int(user_id))
         if not user or not user.is_active:
             raise AuthenticationError("User not found or inactive")
-        
-        # Create new tokens
-        access_token = create_access_token(data={"sub": str(user.id)})
-        refresh_token = create_refresh_token(data={"sub": str(user.id)})
-        
+
+        token_data_dict = {"sub": str(user.id), "session_id": session_id}
+        access_token = create_access_token(data=token_data_dict)
+        refresh_token_value = create_refresh_token(data=token_data_dict)
+
         return {
             "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer"
+            "refresh_token": refresh_token_value,
+            "token_type": "bearer",
+            "expires_in": settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            "idle_timeout_seconds": settings.SESSION_IDLE_TIMEOUT_MINUTES * 60,
+            "absolute_timeout_seconds": settings.SESSION_ABSOLUTE_TIMEOUT_MINUTES * 60,
         }
-        
     except AuthenticationError:
         raise
     except Exception as e:
@@ -183,10 +224,19 @@ def refresh_token(
 
 @router.post("/logout")
 def logout(
-    current_user: User = Depends(get_current_user)
+    token: Optional[str] = Depends(oauth2_scheme_optional),
+    db: Session = Depends(get_db),
 ):
-    """User logout endpoint"""
-    # In a more sophisticated implementation, you might want to blacklist the token
+    """User logout endpoint; destroys server-side session. Accepts token even if expired so client can clear state."""
+    if token:
+        try:
+            payload = verify_token(token)
+            session_id = payload.get("session_id")
+            if session_id:
+                db.execute(delete(Session).where(Session.id == session_id))
+                db.commit()
+        except Exception:
+            pass  # Still return success so client clears tokens
     return {"message": "Successfully logged out"}
 
 
@@ -194,19 +244,28 @@ def logout(
 def get_current_user_info(
     current_user: User = Depends(get_current_user)
 ):
-    """Get current user information"""
-    print(f"[ME] Getting info for user: {current_user.username}")  # Debug
+    """Get current user information and session timeout hints for client-side warning."""
     return {
         "id": current_user.id,
         "username": current_user.username,
         "email": current_user.email,
         "full_name": current_user.full_name,
-        "role": current_user.role.value,  # Convert enum to string
+        "role": current_user.role.value,
         "score": current_user.score,
         "rank": current_user.rank,
         "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
-        "must_change_password": current_user.must_change_password if hasattr(current_user, 'must_change_password') else False
+        "must_change_password": current_user.must_change_password if hasattr(current_user, 'must_change_password') else False,
+        "idle_timeout_seconds": settings.SESSION_IDLE_TIMEOUT_MINUTES * 60,
+        "absolute_timeout_seconds": settings.SESSION_ABSOLUTE_TIMEOUT_MINUTES * 60,
     }
+
+
+@router.post("/session/extend")
+def session_extend(
+    current_user: User = Depends(get_current_user),
+):
+    """Extend session (reset idle timer). Any authenticated request does this; explicit endpoint for 'Stay logged in' button."""
+    return {"message": "Session extended"}
 
 
 @router.post("/password-reset")

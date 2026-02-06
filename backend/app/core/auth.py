@@ -2,18 +2,19 @@
 XploitRUM CTF Platform - Authentication Utilities
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Union
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy.orm import Session as DBSession
+from sqlalchemy import select, delete
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
+from app.models.session import Session
 from app.core.exceptions import AuthenticationError
 
 # Password hashing
@@ -21,6 +22,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -156,40 +158,90 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
         raise AuthenticationError("Authentication failed")
 
 
+def _utc_now():
+    """Current time in UTC (timezone-aware)."""
+    return datetime.now(timezone.utc)
+
+
+def _naive_utc(dt):
+    """Ensure datetime is comparable with UTC: if naive, assume UTC."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def cleanup_expired_sessions(db: DBSession) -> int:
+    """Delete sessions that have exceeded idle or absolute timeout. Returns count deleted."""
+    now = _utc_now()
+    idle_limit = now - timedelta(minutes=settings.SESSION_IDLE_TIMEOUT_MINUTES)
+    absolute_limit = now - timedelta(minutes=settings.SESSION_ABSOLUTE_TIMEOUT_MINUTES)
+    # Compare with naive UTC for SQLite (stored without tz)
+    idle_naive = idle_limit.replace(tzinfo=None) if idle_limit.tzinfo else idle_limit
+    absolute_naive = absolute_limit.replace(tzinfo=None) if absolute_limit.tzinfo else absolute_limit
+    result = db.execute(
+        delete(Session).where(
+            (Session.last_activity_at < idle_naive) | (Session.created_at < absolute_naive)
+        )
+    )
+    count = getattr(result, "rowcount", None) or 0
+    db.commit()
+    return count
+
+
+def _session_expired(session: Session) -> bool:
+    """True if session has exceeded idle or absolute timeout."""
+    now = _utc_now()
+    idle_limit = now - timedelta(minutes=settings.SESSION_IDLE_TIMEOUT_MINUTES)
+    absolute_limit = now - timedelta(minutes=settings.SESSION_ABSOLUTE_TIMEOUT_MINUTES)
+    last_activity = _naive_utc(session.last_activity_at)
+    created = _naive_utc(session.created_at)
+    if last_activity is not None and last_activity < idle_limit:
+        return True
+    if created is not None and created < absolute_limit:
+        return True
+    return False
+
+
 def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: DBSession = Depends(get_db)
 ) -> User:
-    """Get current authenticated user"""
+    """Get current authenticated user; validates server-side session (idle + absolute timeout) and updates last activity."""
     try:
-        print(f"[GET_CURRENT_USER] Verifying token...")  # Debug
         payload = verify_token(token)
-        
         user_id = payload.get("sub")
+        session_id = payload.get("session_id")
         if user_id is None:
-            print(f"[GET_CURRENT_USER] No user_id in token payload")  # Debug
             raise AuthenticationError("Invalid token")
-        
-        print(f"[GET_CURRENT_USER] Getting user with ID: {user_id}")  # Debug
-        
-        # Get user from database
+        if not session_id:
+            raise AuthenticationError("Session required; please log in again")
+
+        session = db.get(Session, session_id)
+        if session is None:
+            raise AuthenticationError("Session invalid or expired")
+        if _session_expired(session):
+            db.execute(delete(Session).where(Session.id == session_id))
+            db.commit()
+            raise AuthenticationError("Session expired due to inactivity or max time")
+
+        # Update last activity (extends idle timeout)
+        now = _utc_now()
+        # Store naive UTC for SQLite compatibility
+        session.last_activity_at = now.replace(tzinfo=None) if now.tzinfo else now
+        db.commit()
+
         user = db.get(User, int(user_id))
         if user is None:
-            print(f"[GET_CURRENT_USER] User not found in database")  # Debug
             raise AuthenticationError("User not found")
-        
-        print(f"[GET_CURRENT_USER] User found: {user.username}, Active: {user.is_active}")  # Debug
-        
         if not user.is_active:
             raise AuthenticationError("User account is inactive")
-        
         return user
-        
+
     except AuthenticationError as e:
-        print(f"[GET_CURRENT_USER] AuthenticationError: {e}")  # Debug
         raise
     except Exception as e:
-        print(f"[GET_CURRENT_USER] Exception: {e}")  # Debug
         import traceback
         traceback.print_exc()
         raise AuthenticationError("Authentication failed")

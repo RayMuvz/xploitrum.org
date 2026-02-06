@@ -3,6 +3,7 @@ XploitRUM CTF Platform - Database Models
 """
 
 from .user import User
+from .session import Session
 from .challenge import Challenge, ChallengeCategory
 from .instance import Instance
 from .submission import Submission
@@ -13,6 +14,7 @@ from .pico_challenge import PicoChallenge, PicoSubmission, PicoCategory, PicoDif
 
 __all__ = [
     "User",
+    "Session",
     "Challenge",
     "ChallengeCategory",
     "Instance",

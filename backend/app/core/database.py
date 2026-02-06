@@ -64,7 +64,7 @@ def init_db():
     """Initialize database tables"""
     try:
         # Import all models here to ensure they are registered
-        from app.models import user, challenge, instance, submission, log, event, member_request, pico_challenge
+        from app.models import user, session, challenge, instance, submission, log, event, member_request, pico_challenge
         
         # Create all tables
         Base.metadata.create_all(bind=engine)

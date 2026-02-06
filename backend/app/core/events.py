@@ -3,9 +3,10 @@ XploitRUM CTF Platform - Application Events
 """
 
 from loguru import logger
-from app.core.database import init_db, close_db
+from app.core.database import init_db, close_db, SessionLocal
 from app.core.config import settings
 from app.core.seed_pico import seed_pico_challenges
+from app.core.auth import cleanup_expired_sessions
 
 
 async def startup_event():
@@ -16,6 +17,14 @@ async def startup_event():
         # Initialize database (synchronous for SQLite)
         init_db()
         logger.info("Database initialized successfully")
+        # Clean up expired sessions (idle/absolute timeout)
+        db = SessionLocal()
+        try:
+            n = cleanup_expired_sessions(db)
+            if n:
+                logger.info(f"Cleaned up {n} expired session(s)")
+        finally:
+            db.close()
         # Seed picoCTF challenges if empty
         seed_pico_challenges()
         logger.info("Pico challenges seed checked")
