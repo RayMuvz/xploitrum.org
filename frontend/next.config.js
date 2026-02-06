@@ -14,10 +14,17 @@ const nextConfig = {
         NEXT_PUBLIC_SHOPIFY_COLLECTION_ID: process.env.NEXT_PUBLIC_SHOPIFY_COLLECTION_ID || '',
     },
     async rewrites() {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
         return [
+            // /api/v1/... -> backend /api/v1/... (avoid doubling v1)
+            {
+                source: '/api/v1/:path*',
+                destination: `${apiUrl}/api/v1/:path*`,
+            },
+            // /api/... (e.g. /api/pico/..., /api/events/...) -> backend /api/v1/...
             {
                 source: '/api/:path*',
-                destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/:path*`,
+                destination: `${apiUrl}/api/v1/:path*`,
             },
         ];
     },
