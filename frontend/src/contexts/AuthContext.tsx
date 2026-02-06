@@ -412,7 +412,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             setIsLoading(true)
 
-            const response = await axios.post('/api/v1/auth/register', userData)
+            const response = await axios.post<{ tokens: AuthTokens; user: User }>('/api/v1/auth/register', userData)
 
             const newTokens = response.data.tokens
             setTokens(newTokens)
@@ -422,9 +422,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             axios.defaults.headers.common['Authorization'] = `Bearer ${newTokens.access_token}`
 
             // Set user info
-            const userData = response.data.user
-            setUser(userData)
-            persistUser(userData)
+            const registeredUser = response.data.user
+            setUser(registeredUser)
+            persistUser(registeredUser)
 
             toast({
                 title: "Welcome to XploitRUM!",
