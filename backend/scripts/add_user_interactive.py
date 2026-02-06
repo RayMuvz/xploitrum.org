@@ -34,17 +34,18 @@ def prompt_if_exists(value, param_name, check_exists_fn, get_new_prompt):
     """
     If value already exists in DB, prompt: "X already exists. Enter a different value? (Y/N)"
     - Y: prompt for new value (get_new_prompt), re-check until unique or user says N.
-    - N: return None (caller should abort).
-    Returns the value to use (original if unique, or new value), or None if user chose N.
+    - N: keep current value and move on to next parameter (return value as-is).
+    Returns the value to use (original or new).
     """
     while check_exists_fn(value):
         ans = input(f"  {param_name} '{value}' already exists. Enter a different value? (Y/N): ").strip().upper()
         if ans in ("N", "NO"):
-            return None
+            # User said no: move on to next parameter (keep current value)
+            return value
         if ans in ("Y", "YES"):
             value = get_new_prompt()
             if not value:
-                return None
+                return value
         else:
             print("  Please answer Y or N.")
     return value
@@ -113,13 +114,13 @@ def main():
 
     print("\n--- Add user (email: {}) ---\n".format(email))
 
-    # Email: if already exists, prompt Y/N; if N abort, if Y ask for new email until unique
+    # Email: if already exists, prompt Y/N; Y = ask for new value, N = keep and move on
     email = prompt_if_exists(
         email, "Email", email_exists,
         lambda: input("  Enter new email: ").strip().lower()
     )
     if not email or "@" not in email:
-        print("Aborted.")
+        print("Aborted: valid email is required.")
         session.close()
         sys.exit(0)
 
@@ -130,7 +131,7 @@ def main():
         lambda: prompt("  Enter new username", required=True)
     )
     if not username:
-        print("Aborted.")
+        print("Aborted: username is required.")
         session.close()
         sys.exit(0)
 
@@ -192,7 +193,12 @@ def main():
         print("They can log in immediately (no password change required).")
     except Exception as e:
         session.rollback()
-        print(f"Error: {e}")
+        err = str(e).lower()
+        if "unique" in err or "duplicate" in err or "already exists" in err:
+            print("Could not create user: this email or username is already in use.")
+            print("Run the script again and choose Y when asked to enter a different value.")
+        else:
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         session.close()
