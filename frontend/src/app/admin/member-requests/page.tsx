@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import axios from 'axios'
 import { AdminRoute } from '@/contexts/AuthContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
@@ -37,26 +38,12 @@ export default function MemberRequestsPage() {
     const fetchRequests = async () => {
         try {
             setIsLoading(true)
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-            const authTokens = localStorage.getItem('auth_tokens')
-            const token = authTokens ? JSON.parse(authTokens).access_token : ''
-
             const url = filter === 'all'
-                ? `${apiUrl}/api/v1/member-requests/`
-                : `${apiUrl}/api/v1/member-requests/?status_filter=${filter}`
+                ? '/api/v1/member-requests/'
+                : `/api/v1/member-requests/?status_filter=${filter}`
 
-            const response = await fetch(url, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch requests')
-            }
-
-            const data = await response.json()
-            setRequests(data)
+            const response = await axios.get<MemberRequest[]>(url)
+            setRequests(response.data)
         } catch (error) {
             toast({
                 title: "Error",
@@ -71,23 +58,8 @@ export default function MemberRequestsPage() {
     const handleAccept = async (requestId: string) => {
         try {
             setActionLoading(requestId)
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-            const authTokens = localStorage.getItem('auth_tokens')
-            const token = authTokens ? JSON.parse(authTokens).access_token : ''
-
-            const response = await fetch(`${apiUrl}/api/v1/member-requests/${requestId}/accept`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
-
-            if (!response.ok) {
-                const data = await response.json()
-                throw new Error(data.detail || 'Failed to accept request')
-            }
-
-            const data = await response.json()
+            const response = await axios.put<{ temp_password?: string }>(`/api/v1/member-requests/${requestId}/accept`)
+            const data = response.data
 
             toast({
                 title: "Request Accepted",
@@ -116,21 +88,7 @@ export default function MemberRequestsPage() {
 
         try {
             setActionLoading(requestId)
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-            const authTokens = localStorage.getItem('auth_tokens')
-            const token = authTokens ? JSON.parse(authTokens).access_token : ''
-
-            const response = await fetch(`${apiUrl}/api/v1/member-requests/${requestId}/decline`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
-
-            if (!response.ok) {
-                const data = await response.json()
-                throw new Error(data.detail || 'Failed to decline request')
-            }
+            await axios.put(`/api/v1/member-requests/${requestId}/decline`)
 
             toast({
                 title: "Request Declined",
