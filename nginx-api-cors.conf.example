@@ -1,0 +1,48 @@
+# CORS fix for api.xploitrum.org – use this if preflight (OPTIONS) fails with CORS errors
+#
+# Add the "map" block once at the top of your nginx config (inside http { }).
+# Replace the api.xploitrum.org server block's location / { } with the one below.
+# Then: sudo nginx -t && sudo systemctl reload nginx
+# -----------------------------------------------------------------------------
+
+# Put this at the top of http { } (e.g. in /etc/nginx/sites-available/xploitrum.org or in /etc/nginx/nginx.conf inside http { })
+map $http_origin $cors_origin {
+    default "";
+    "https://xploitrum.org" "https://xploitrum.org";
+    "https://www.xploitrum.org" "https://www.xploitrum.org";
+    "https://api.xploitrum.org" "https://api.xploitrum.org";
+    "https://ctf.xploitrum.org" "https://ctf.xploitrum.org";
+}
+
+# API subdomain server block – full location / with CORS
+# (keep your existing listen 80 / listen 443 and server_name; only replace location /)
+    location / {
+        # Handle preflight (OPTIONS) in Nginx so CORS headers are always present
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' $cors_origin;
+            add_header 'Access-Control-Allow-Credentials' 'true';
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';
+            add_header 'Access-Control-Max-Age' 86400;
+            add_header 'Content-Length' 0;
+            add_header 'Content-Type' 'text/plain charset=UTF-8';
+            return 204;
+        }
+
+        proxy_pass http://localhost:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header Origin $http_origin;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Add CORS to all API responses (fallback if backend does not)
+        add_header 'Access-Control-Allow-Origin' $cors_origin always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+    }

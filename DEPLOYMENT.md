@@ -149,9 +149,9 @@ FROM_EMAIL=admin@xploitrum.org
 ENVIRONMENT=production
 DEBUG=False
 
-# CORS
-CORS_ORIGINS=https://www.xploitrum.org,https://ctf.xploitrum.org,https://api.xploitrum.org
-ALLOWED_HOSTS=www.xploitrum.org,ctf.xploitrum.org,api.xploitrum.org,xploitrum.org
+# CORS - include both www and non-www (xploitrum.org) so login/API work from either
+CORS_ORIGINS=https://www.xploitrum.org,https://xploitrum.org,https://ctf.xploitrum.org,https://api.xploitrum.org
+ALLOWED_HOSTS=www.xploitrum.org,xploitrum.org,ctf.xploitrum.org,api.xploitrum.org
 
 # URLs
 FRONTEND_URL=https://www.xploitrum.org

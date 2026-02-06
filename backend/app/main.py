@@ -48,19 +48,22 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# CORS must be outermost so preflight (OPTIONS) and all responses get CORS headers.
+# allow_origin_regex fallback ensures https://xploitrum.org and https://www.xploitrum.org work even if .env is wrong.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"^https://(www\.)?xploitrum\.org$",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
 # Security middleware
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=settings.ALLOWED_HOSTS
-)
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
 )
 
 # Custom middleware

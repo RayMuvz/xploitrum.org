@@ -37,23 +37,38 @@ bash scripts/restart-services.sh
 **Symptoms:**
 ```
 Access to fetch at 'https://api.xploitrum.org/...' from origin 'https://xploitrum.org' 
-has been blocked by CORS policy
+has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present
 ```
 
-**Cause:** Backend returning 500 error before CORS headers are sent
+**Cause:** The backend's `CORS_ORIGINS` (in production `.env`) does not include the origin the user is on. If users visit **https://xploitrum.org** (no www), that exact origin must be in `CORS_ORIGINS`.
 
 **Solution:**
-1. **Check backend logs** for the actual error:
+1. **On the server**, edit the backend `.env`:
+   ```bash
+   cd /home/xploitrum.org/backend
+   nano .env
+   ```
+2. **Set CORS to include both www and non-www:**
+   ```
+   CORS_ORIGINS=https://www.xploitrum.org,https://xploitrum.org,https://ctf.xploitrum.org,https://api.xploitrum.org
+   ```
+3. **Restart the backend** so the new env is loaded:
+   ```bash
+   sudo systemctl restart xploitrum-backend
+   ```
+
+If the error persists:
+
+4. **Handle CORS in Nginx** (recommended when preflight still fails):  
+   The repo includes `nginx-api-cors.conf.example` with a `map` and a `location /` block that:
+   - Handle **OPTIONS (preflight)** in Nginx and return 204 with CORS headers.
+   - Add CORS headers to all API responses.  
+   On the server, add the `map` at the top of your API server config, then replace the API `location /` with the example block. Run `sudo nginx -t && sudo systemctl reload nginx`.
+
+5. **Check backend logs** for 4xx/5xx errors:
    ```bash
    sudo journalctl -u xploitrum-backend.service -n 100 -f
    ```
-
-2. **Restart backend** to apply latest fixes:
-   ```bash
-   sudo systemctl restart xploitrum-backend.service
-   ```
-
-3. **Verify CORS configuration** in `backend/app/core/config.py`
 
 ---
 
