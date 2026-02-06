@@ -72,6 +72,50 @@ If the error persists:
 
 ---
 
+### **2b. 502 Bad Gateway on API (e.g. member-requests/submit)**
+
+**Symptoms:**  
+`POST https://api.xploitrum.org/api/v1/...` returns **502 (Bad Gateway)** and the browser shows a CORS error (because Nginx’s 502 response had no CORS headers).
+
+**Cause:** Nginx cannot get a valid response from the backend (backend down, crashing, or not listening on the expected port).
+
+**Solution (on the server):**
+
+1. **Check if the backend is running**
+   ```bash
+   sudo systemctl status xploitrum-backend
+   ```
+   If it says `inactive` or `failed`, start it:
+   ```bash
+   sudo systemctl start xploitrum-backend
+   ```
+
+2. **Check backend logs** for crashes or errors
+   ```bash
+   sudo journalctl -u xploitrum-backend -n 100 --no-pager
+   ```
+
+3. **Test the API from the server**
+   ```bash
+   curl -s http://localhost:8000/health
+   curl -X POST http://localhost:8000/api/v1/member-requests/submit \
+     -H "Content-Type: application/json" \
+     -d '{"username":"test","email":"test@test.com","full_name":"Test","password":"test123","reason":"test"}'
+   ```
+   If `curl` to `localhost:8000` fails or returns an error, the problem is the backend (not Nginx or CORS).
+
+4. **Restart the backend** after code or .env changes
+   ```bash
+   sudo systemctl restart xploitrum-backend
+   ```
+
+5. **Apply the updated Nginx config** so 502 responses include CORS headers (see `nginx-xploitrum-org-with-cors.conf`). Then reload Nginx:
+   ```bash
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+
+---
+
 ### **3. Instance Access Fails (Machine Page)**
 
 **Symptoms:**

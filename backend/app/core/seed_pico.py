@@ -42,7 +42,7 @@ def seed_pico_challenges():
             diff = PicoDifficulty(difficulty)
             c = PicoChallenge(
                 title=title,
-                category=PicoCategory.web_exploitation,
+                category=PicoCategory.WEB_EXPLOITATION,
                 difficulty=diff,
                 flag_pattern=flag_pattern,
                 points=1,
