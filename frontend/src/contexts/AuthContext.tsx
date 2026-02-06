@@ -107,6 +107,70 @@ function SessionWarningModal({
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Storage keys and helpers for "close all tabs = logout"
+const AUTH_TOKENS_KEY = 'auth_tokens'
+const USER_KEY = 'user'
+
+function persistTokens(tokens: AuthTokens) {
+    if (typeof window === 'undefined') return
+    const s = JSON.stringify(tokens)
+    sessionStorage.setItem(AUTH_TOKENS_KEY, s)
+    localStorage.setItem(AUTH_TOKENS_KEY, s)
+}
+
+function persistUser(user: User) {
+    if (typeof window === 'undefined') return
+    const s = JSON.stringify(user)
+    sessionStorage.setItem(USER_KEY, s)
+    localStorage.setItem(USER_KEY, s)
+}
+
+function clearAuthStorage() {
+    if (typeof window === 'undefined') return
+    sessionStorage.removeItem(AUTH_TOKENS_KEY)
+    sessionStorage.removeItem(USER_KEY)
+    localStorage.removeItem(AUTH_TOKENS_KEY)
+    localStorage.removeItem(USER_KEY)
+}
+
+/** Clear only localStorage so that when all tabs are closed, next visit has no tokens (logged out). */
+function clearLocalStorageAuth() {
+    if (typeof window === 'undefined') return
+    localStorage.removeItem(AUTH_TOKENS_KEY)
+    localStorage.removeItem(USER_KEY)
+}
+
+function getStoredTokens(): AuthTokens | null {
+    if (typeof window === 'undefined') return null
+    const s = sessionStorage.getItem(AUTH_TOKENS_KEY) || localStorage.getItem(AUTH_TOKENS_KEY)
+    if (!s) return null
+    try {
+        return JSON.parse(s) as AuthTokens
+    } catch {
+        return null
+    }
+}
+
+function getStoredUser(): User | null {
+    if (typeof window === 'undefined') return null
+    const s = sessionStorage.getItem(USER_KEY) || localStorage.getItem(USER_KEY)
+    if (!s) return null
+    try {
+        return JSON.parse(s) as User
+    } catch {
+        return null
+    }
+}
+
+/** When we restore from localStorage (new tab), copy to sessionStorage so this tab has the session. */
+function copyLocalAuthToSession() {
+    if (typeof window === 'undefined') return
+    const t = localStorage.getItem(AUTH_TOKENS_KEY)
+    const u = localStorage.getItem(USER_KEY)
+    if (t) sessionStorage.setItem(AUTH_TOKENS_KEY, t)
+    if (u) sessionStorage.setItem(USER_KEY, u)
+}
+
 // API base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -129,8 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const idleTimeoutSeconds = tokens?.idle_timeout_seconds ?? user?.idle_timeout_seconds ?? 30 * 60
 
     const clearAuthData = useCallback(() => {
-        localStorage.removeItem('auth_tokens')
-        localStorage.removeItem('user')
+        clearAuthStorage()
         delete axios.defaults.headers.common['Authorization']
         setUser(null)
         setTokens(null)
@@ -164,26 +227,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, [router, toast, clearAuthData])
 
-    // Initialize auth state from localStorage
+    // Initialize auth: prefer sessionStorage (current tab), then localStorage (other tab had session; copy to session)
     useEffect(() => {
         const initializeAuth = async () => {
             try {
-                const storedTokens = localStorage.getItem('auth_tokens')
-                const storedUser = localStorage.getItem('user')
+                const storedTokens = getStoredTokens()
+                const storedUser = getStoredUser()
+                // If we got from localStorage (new tab), copy to sessionStorage so this tab has the session
+                if (storedTokens || storedUser) copyLocalAuthToSession()
 
                 if (storedTokens && storedUser) {
-                    const parsedTokens = JSON.parse(storedTokens)
-                    const parsedUser = JSON.parse(storedUser)
-
                     // Set axios default header
-                    axios.defaults.headers.common['Authorization'] = `Bearer ${parsedTokens.access_token}`
+                    axios.defaults.headers.common['Authorization'] = `Bearer ${storedTokens.access_token}`
 
                     // Verify token is still valid
                     try {
                         const response = await axios.get('/api/v1/auth/me')
                         const userData = response.data
                         setUser(userData)
-                        setTokens(parsedTokens)
+                        setTokens(storedTokens)
+                        persistUser(userData)
                         lastActivityAt.current = Date.now()
 
                         // Check if user must change password and redirect
@@ -193,7 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     } catch (error) {
                         // Token is invalid, try to refresh
                         try {
-                            await refreshTokenFromStorage(parsedTokens.refresh_token)
+                            await refreshTokenFromStorage(storedTokens.refresh_token)
                         } catch (refreshError) {
                             // Refresh failed, clear storage
                             clearAuthData()
@@ -235,6 +298,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => clearInterval(checkInterval)
     }, [isAuthenticated, idleTimeoutSeconds])
 
+    // When user closes tab/window: clear localStorage so that when ALL tabs are closed, next visit has no tokens (logged out).
+    // We do not call the logout API (would invalidate session for other open tabs). Session expires by idle/absolute timeout.
+    useEffect(() => {
+        const onPageUnload = () => clearLocalStorageAuth()
+        window.addEventListener('beforeunload', onPageUnload)
+        window.addEventListener('pagehide', onPageUnload)
+        return () => {
+            window.removeEventListener('beforeunload', onPageUnload)
+            window.removeEventListener('pagehide', onPageUnload)
+        }
+    }, [])
+
     // Activity listeners: update lastActivity so warning doesn't show while user is active
     useEffect(() => {
         if (!isAuthenticated) return
@@ -261,15 +336,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const newTokens = response.data
         setTokens(newTokens)
-        localStorage.setItem('auth_tokens', JSON.stringify(newTokens))
+        persistTokens(newTokens)
 
         // Update axios header
         axios.defaults.headers.common['Authorization'] = `Bearer ${newTokens.access_token}`
 
         // Get updated user info
         const userResponse = await axios.get('/api/v1/auth/me')
-        setUser(userResponse.data)
-        localStorage.setItem('user', JSON.stringify(userResponse.data))
+        const userData = userResponse.data
+        setUser(userData)
+        persistUser(userData)
     }
 
     // Auth methods
@@ -289,7 +365,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             const newTokens = response.data
             setTokens(newTokens)
-            localStorage.setItem('auth_tokens', JSON.stringify(newTokens))
+            persistTokens(newTokens)
 
             // Set axios header
             axios.defaults.headers.common['Authorization'] = `Bearer ${newTokens.access_token}`
@@ -298,7 +374,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userResponse = await axios.get('/api/v1/auth/me')
             const userData = userResponse.data
             setUser(userData)
-            localStorage.setItem('user', JSON.stringify(userData))
+            persistUser(userData)
             lastActivityAt.current = Date.now()
 
             toast({
@@ -340,14 +416,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             const newTokens = response.data.tokens
             setTokens(newTokens)
-            localStorage.setItem('auth_tokens', JSON.stringify(newTokens))
+            persistTokens(newTokens)
 
             // Set axios header
             axios.defaults.headers.common['Authorization'] = `Bearer ${newTokens.access_token}`
 
             // Set user info
-            setUser(response.data.user)
-            localStorage.setItem('user', JSON.stringify(response.data.user))
+            const userData = response.data.user
+            setUser(userData)
+            persistUser(userData)
 
             toast({
                 title: "Welcome to XploitRUM!",
@@ -413,7 +490,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const updatedUser = response.data
 
             setUser(updatedUser)
-            localStorage.setItem('user', JSON.stringify(updatedUser))
+            persistUser(updatedUser)
 
             toast({
                 title: "Profile updated",
