@@ -12,7 +12,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
-from app.models.user import User, UserStatus
+from app.models.user import User, UserStatus, UserRole
 from app.models.challenge import Challenge, ChallengeStatus
 from app.models.instance import Instance, InstanceStatus
 from app.models.submission import Submission
@@ -394,9 +394,10 @@ class CTFService:
         return result
     
     def get_leaderboard(self, db: Session, limit: int = 100) -> List[Dict[str, Any]]:
-        """Get leaderboard data"""
+        """Get leaderboard data (excludes admin)."""
         users = db.query(User).filter(
             User.status == UserStatus.ACTIVE,
+            User.role != UserRole.ADMIN,
             User.score > 0
         ).order_by(User.score.desc(), User.total_solves.desc()).limit(limit).all()
         
@@ -421,10 +422,11 @@ class CTFService:
         if not user:
             return
         
-        # Count users with higher scores
+        # Count non-admin users with higher scores
         higher_score_count = db.query(User).filter(
             User.score > user.score,
-            User.status == UserStatus.ACTIVE
+            User.status == UserStatus.ACTIVE,
+            User.role != UserRole.ADMIN
         ).count()
         
         user.rank = higher_score_count + 1

@@ -137,10 +137,11 @@ async def get_leaderboard(
     offset: int = 0,
     db: Session = Depends(get_db)
 ):
-    """Get user leaderboard"""
+    """Get user leaderboard (excludes admin)."""
     try:
         stmt = select(User).where(
-            User.status == UserStatus.ACTIVE
+            User.status == UserStatus.ACTIVE,
+            User.role != UserRole.ADMIN
         ).order_by(
             User.score.desc(),
             User.total_solves.desc(),

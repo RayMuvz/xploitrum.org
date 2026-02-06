@@ -10,7 +10,7 @@ from sqlalchemy import desc
 from pydantic import BaseModel
 
 from app.core.database import get_db
-from app.models.user import User, UserStatus
+from app.models.user import User, UserStatus, UserRole
 from app.models.pico_challenge import PicoChallenge, PicoSubmission, PicoCategory, PicoDifficulty
 from app.services.auth_service import get_current_active_user, get_current_admin_user
 
@@ -89,11 +89,11 @@ def get_scoreboard(
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
 ):
-    """Public scoreboard: rank, username, score, total_solves (pico + existing)."""
-    # Score is on User; we rank by score desc, then total_solves
+    """Public scoreboard: rank, username, score, total_solves (pico + existing). Excludes admin."""
+    # Score is on User; exclude admin (they don't solve challenges); rank by score desc
     rows = (
         db.query(User)
-        .filter(User.status == UserStatus.ACTIVE)
+        .filter(User.status == UserStatus.ACTIVE, User.role != UserRole.ADMIN)
         .order_by(desc(User.score), desc(User.total_solves))
         .limit(limit)
         .all()
