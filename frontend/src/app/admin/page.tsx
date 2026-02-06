@@ -14,7 +14,8 @@ import {
     Activity,
     TrendingUp,
     UserCheck,
-    Shield
+    Shield,
+    Flag
 } from 'lucide-react'
 import { AdminRoute } from '@/contexts/AuthContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -225,6 +226,24 @@ export default function AdminDashboardPage() {
                             </p>
                             <Button className="w-full bg-cyber-400 text-black hover:bg-cyber-500">
                                 View Stats
+                            </Button>
+                        </motion.div>
+
+                        {/* picoCTF Challenges */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.55 }}
+                            className="cyber-border rounded-lg p-6 hover:border-cyber-400/50 cursor-pointer transition-all"
+                            onClick={() => router.push('/admin/pico-challenges')}
+                        >
+                            <Flag className="h-12 w-12 text-cyber-400 mb-4" />
+                            <h3 className="text-xl font-semibold text-white mb-2">picoCTF Challenges</h3>
+                            <p className="text-gray-400 mb-4">
+                                Add and manage picoCTF challenge cards (category, difficulty)
+                            </p>
+                            <Button className="w-full bg-cyber-400 text-black hover:bg-cyber-500">
+                                Manage Challenges
                             </Button>
                         </motion.div>
 

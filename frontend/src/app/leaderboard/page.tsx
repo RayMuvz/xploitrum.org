@@ -30,8 +30,8 @@ export default function LeaderboardPage() {
 
     const fetchLeaderboard = async () => {
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-            const response = await fetch(`${apiUrl}/api/v1/ctf/leaderboard?limit=100`)
+            // Use pico scoreboard (public); same User.score/total_solves updated by picoCTF submissions
+            const response = await fetch('/api/pico/scoreboard?limit=100')
             
             if (response.ok) {
                 const data = await response.json()

@@ -77,6 +77,7 @@ class User(Base):
     # Relationships
     instances = relationship("Instance", back_populates="user", cascade="all, delete-orphan")
     submissions = relationship("Submission", back_populates="user", cascade="all, delete-orphan")
+    pico_submissions = relationship("PicoSubmission", back_populates="user", cascade="all, delete-orphan")
     created_events = relationship("Event", back_populates="creator", cascade="all, delete-orphan")
     event_registrations = relationship("EventRegistration", back_populates="user", cascade="all, delete-orphan")
     

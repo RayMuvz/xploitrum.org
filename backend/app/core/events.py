@@ -5,6 +5,7 @@ XploitRUM CTF Platform - Application Events
 from loguru import logger
 from app.core.database import init_db, close_db
 from app.core.config import settings
+from app.core.seed_pico import seed_pico_challenges
 
 
 async def startup_event():
@@ -15,6 +16,9 @@ async def startup_event():
         # Initialize database (synchronous for SQLite)
         init_db()
         logger.info("Database initialized successfully")
+        # Seed picoCTF challenges if empty
+        seed_pico_challenges()
+        logger.info("Pico challenges seed checked")
         
         # Initialize Redis connection
         # (Redis connection will be handled by individual services)
