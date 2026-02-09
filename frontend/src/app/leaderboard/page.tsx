@@ -163,7 +163,7 @@ export default function LeaderboardPage() {
                         </a>
                     </motion.div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="max-h-[70vh] overflow-y-auto pr-2 space-y-4">
                         {leaderboard.map((entry, index) => (
                             <motion.div
                                 key={entry.rank}

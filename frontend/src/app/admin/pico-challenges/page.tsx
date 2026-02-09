@@ -78,7 +78,11 @@ export default function AdminPicoChallengesPage() {
 
     const handleCreate = () => {
         setEditingId(null)
-        setFormData(emptyForm)
+        // Default display_order to last position (one more than current max)
+        const lastOrder = challenges.length
+            ? Math.max(...challenges.map((c) => c.display_order)) + 1
+            : 0
+        setFormData({ ...emptyForm, display_order: lastOrder })
         setShowForm(true)
     }
 

@@ -69,7 +69,7 @@ export function ScoreboardSection() {
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="max-w-2xl mx-auto space-y-3"
+                        className="max-w-2xl mx-auto space-y-3 max-h-[400px] overflow-y-auto pr-2"
                     >
                         {entries.map((e, i) => (
                             <div
