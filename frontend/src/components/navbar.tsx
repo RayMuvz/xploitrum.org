@@ -70,12 +70,6 @@ export function Navbar() {
                                             <Settings className="h-4 w-4 mr-2" />
                                             Profile
                                         </a>
-                                        {user?.role === 'admin' && (
-                                            <a href="/admin" className="flex items-center px-3 py-2 text-gray-300 hover:text-cyber-400 hover:bg-cyber-400/10 transition-colors">
-                                                <Settings className="h-4 w-4 mr-2" />
-                                                Admin Panel
-                                            </a>
-                                        )}
                                         <button
                                             onClick={logout}
                                             className="flex items-center w-full px-3 py-2 text-gray-300 hover:text-red-400 hover:bg-red-400/10 transition-colors"
@@ -172,14 +166,6 @@ export function Navbar() {
                                 >
                                     Profile
                                 </a>
-                                {user?.role === 'admin' && (
-                                    <a
-                                        href="/admin"
-                                        className="block px-3 py-2 text-gray-300 hover:text-cyber-400 transition-colors"
-                                    >
-                                        Admin Panel
-                                    </a>
-                                )}
                                 <button
                                     onClick={logout}
                                     className="block w-full px-3 py-2 text-gray-300 hover:text-red-400 transition-colors text-left"
